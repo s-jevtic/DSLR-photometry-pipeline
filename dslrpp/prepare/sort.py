@@ -10,10 +10,13 @@ def readRaw(impath):
         return img.postprocess()
 
 def saveFITS(im, impath):
-    
+    print(type(im.imdata)) #kog je tima im? im je objekat klase DSLRImage
+    im = im.imdata #samo nas zanimaju podaci zapravo.
     hdu = fits.PrimaryHDU(im)
-    print("Writing FITS " + hdu + " to path:\n" + impath)
-    hdu.writeto(impath)
+    #print("Writing FITS " + hdu + " to path:\n" + impath)
+    # ovaj "hdu" u printu treba da ti bude string, print prima string
+    # ne HDU tip
+    hdu.writeto(impath) # postaraj se da taj folder postoji gde ispisujes!
 
 def listdir(path):
     return [path + '/' + d for d in os.listdir(path)]
