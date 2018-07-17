@@ -8,18 +8,24 @@ def splitChannels(rgb):
     return r, g, b
 
 class DSLRImage:
-    imdata=np.empty((0,0))
-    imtype=ImageType.LIGHT
-    imcolor=Color.GREEN
+    fnum=np.zeros((4,3), dtype=int)
     def __init__(
             self, idata, itype=ImageType.LIGHT, color=Color.GREEN,
-            binX=None, binY=None
+            binX=None, binY=None, fname=None
             ):
+        cls = type(self)
         self.imdata = idata
         self.imtype = itype
         self.imcolor = color
-        print(self.imdata.dtype.name)
-        print("initializing image class: " + str(self))
+        itype = itype.value
+        color = color.value
+        if(fname is None):
+            if(cls.fnum[itype][color] is None):
+                cls.fnum[itype][color] = 0
+            ftype = {0:"light", 1:"bias", 2:"dark", 3:"flat"}[itype]
+            self.fname = ftype + "_" + str(cls.fnum[itype][color])
+            cls.fnum[itype][color] += 1
+        print("Initializing image class: " + str(self))
         
         if(binX is not None):
             self.binImage(binX, binY)
@@ -27,7 +33,7 @@ class DSLRImage:
     def binImage(self, x, y=None):
         if y is None:
             y = x
-        print("binning image: " + str(self) + " (" + str(x) + "x" + str(y)+ ")")
+        print("Binning image: " + str(self) + " (" + str(x) + "x" + str(y)+ ")")
         h = len(self.imdata)
         w = len(self.imdata[0])
         hb = h - h%y
@@ -49,5 +55,5 @@ class DSLRImage:
     def __str__(self):
         return("DSLRImage(imtype=" + str(self.imtype)
                           + ", color=" + str(self.imcolor)
-                          + ")"
-                          )
+                          + ", fname=" + self.fname
+                          + ")")
