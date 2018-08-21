@@ -1,3 +1,8 @@
+"""This submodule contains the DSLRImage class and its Monochrome subclass.
+
+The DSLRImage class serves the purpose of containing all needed information for a frame,
+as well as the methods for binning, extracting monochrome channels, and writing the file to FITS
+"""
 import os
 from fractions import Fraction
 from datetime import datetime
@@ -9,18 +14,25 @@ import rawpy
 from . import ImageType, Color
 
 class DSLRImage:
-    fnum=np.zeros((4,4), dtype=int)
+    """Loads an image from RAW format, stores the metadata and writes the image as a NumPy array."""
+    fnum=np.zeros((4,4), dtype=int) # Declares a NumPy 2d array for filename serialization
     def __init__(
             self, impath, itype=ImageType.LIGHT, color=None
             ):
         self.impath = impath
         self.imtype = itype
         imdata, self.exptime, self.jdate = self.__parseData(impath)
-        self._genPath()
+        print("Initializing image class: " + str(self))
+        self._genPath() # generates the serialized filename
         self._setData(imdata)
         del imdata
             
     def binImage(self, x, y=None, fn='mean'):
+        """Bins the data from the image. Requires the window width.
+        If window height is not specified, the window is assumed to be square.
+        Binning can be performed via arithmetic mean or median, which is specified in the fn argument.
+        The default is arithmetic mean.
+        """
         imdata = self.getData()
         if y is None:
             y = x
@@ -28,7 +40,7 @@ class DSLRImage:
         h = len(imdata)
         w = len(imdata[0])
         hb = h - h%y
-        wb = w - w%x
+        wb = w - w%x # reduces the image size in case it isn't divisible by window size
         imdata_resized = imdata.copy()
         imdata_resized.resize((hb, w, 3))
         imdata_resized1 = np.empty((hb, wb, 3))
@@ -36,9 +48,9 @@ class DSLRImage:
             imdata_resized1[r] = np.resize(imdata_resized[r], (wb, 3))
         imdata_resized1 = imdata_resized1.reshape((h//x, wb, y, 3), order='A')      
         imdata_resized1 = imdata_resized1.reshape((h//y, w//x, y, x, 3), order='F')
-        bindata=np.empty((h//y, w//x, 3))
+        bindata=np.empty((h//y, w//x, 3)) # reshapes the matrix into a set of arrays with length x*y
         for r in range(len(bindata)):
-            for c in range(len(bindata[r])):
+            for c in range(len(bindata[r])): # bins the arrays using the specified function
                 if fn is 'mean':
                     bindata[r][c] = np.mean(imdata_resized1[r][c])
                 elif fn is 'median':
@@ -46,15 +58,17 @@ class DSLRImage:
                 else:
                     raise ValueError('Invalid argument for \'fn\' parameter')
         bindata = np.resize(bindata, (h//y, w//x, 1, 1, 3))
-        bindata = bindata.reshape(h//y, w//x, 3)
+        bindata = bindata.reshape(h//y, w//x, 3) # reshapes the matrix back to its original form
         self._setData(bindata)
         
     def extractChannel(self, color):
+        """Extracts the specified channel (R,G,B) from the RGB image."""
         print("Extracting " + color.name + " channel from image " + str(self))
         imdata = self.getData()[:,:,color.value]
         return Monochrome(imdata, self.impath, self.imtype, color)
     
     def saveFITS(self, impath):
+        """Writes the data to a FITS file."""
         impath += self.fname + ".fits"
         hdu = fits.PrimaryHDU(self.getData())
         print("Writing image " + str(self) + " to file: " + impath)
@@ -65,12 +79,16 @@ class DSLRImage:
             hdu.writeto(impath)
             
     def getData(self):
+        # loads the image data from the temporary folder
         return np.load(self.tmpPath + self.fname + '.npy')
     
     def _setData(self, idata):
+        # writes the image data to the temporary folder
         np.save(self.tmpPath + self.fname, idata)
         
     def _genPath(self):
+        # generates a serialized file name in the format imagetype_ordinalnumber
+        # if the image is monochrome, the format is imagetype_ordinalnumber_color
         cls = type(self)
         itype = self.imtype
         try:
@@ -89,7 +107,7 @@ class DSLRImage:
         except AttributeError:
             self.fname = ftype + "_" + str(cls.fnum[itype][color])
         cls.fnum[itype][color] += 1
-        print("Initializing image class: " + str(self))
+        
         self.tmpPath = os.path.dirname(self.impath) + '\\temp\\'
         try:
             os.makedirs(self.tmpPath)
@@ -97,6 +115,7 @@ class DSLRImage:
             pass
         
     def __parseData(self, impath):
+        # reads the metadata from the RAW file
         print("Reading file: " + impath)
         with rawpy.imread(impath) as img:
             idata = img.postprocess()
@@ -118,6 +137,7 @@ class DSLRImage:
                           + ")")
         
     def __del__(self):
+        # deletes the temporary file/folder
         print("Deleting image class: " + str(self))
         os.remove(self.tmpPath + self.fname + '.npy')
         try:
@@ -126,6 +146,9 @@ class DSLRImage:
             pass
 
 class Monochrome(DSLRImage):
+    """A subtype of DSLRImage for single-color images.
+    Is meant to be generated from the extractChannel method. Avoid using the class directly.
+    """
     def __init__(
             self, imdata, impath, itype=ImageType.LIGHT, color=Color.GREEN 
             ):
@@ -137,6 +160,7 @@ class Monochrome(DSLRImage):
         del imdata
         
     def binImage(self, x, y=None, fn='mean'):
+        """Same as the binImage method in the superclass, but optimized for monochrome arrays."""
         imdata = self.getData()
         if y is None:
             y = x
