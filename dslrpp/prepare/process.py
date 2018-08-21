@@ -1,9 +1,11 @@
 """This submodule contains the DSLRImage class and its Monochrome subclass.
 
-The DSLRImage class serves the purpose of containing all needed information for a frame,
-as well as the methods for binning, extracting monochrome channels, and writing the file to FITS
+The DSLRImage class serves the purpose of containing all needed information
+for a frame, as well as the methods for binning, extracting monochrome
+channels, and writing the file to FITS format.
 """
 import os
+from enum import IntEnum
 from fractions import Fraction
 from datetime import datetime
 from astropy.time import Time
@@ -11,11 +13,24 @@ from astropy.io import fits
 import exifread
 import numpy as np
 import rawpy
-from . import ImageType, Color
+
+class ImageType(IntEnum):
+    LIGHT = 0
+    BIAS = 1
+    DARK = 2
+    FLAT = 3
+	
+class Color(IntEnum):
+    RED = 0
+    GREEN = 1
+    BLUE = 2
 
 class DSLRImage:
-    """Loads an image from RAW format, stores the metadata and writes the image as a NumPy array."""
-    fnum=np.zeros((4,4), dtype=int) # Declares a NumPy 2d array for filename serialization
+    """Loads an image from RAW format, stores the metadata and writes the image
+    as a NumPy array.
+    """
+    fnum=np.zeros((4,4), dtype=int)
+    # Declares a NumPy 2d array for filename serialization
     def __init__(
             self, impath, itype=ImageType.LIGHT, color=None
             ):
@@ -30,27 +45,35 @@ class DSLRImage:
     def binImage(self, x, y=None, fn='mean'):
         """Bins the data from the image. Requires the window width.
         If window height is not specified, the window is assumed to be square.
-        Binning can be performed via arithmetic mean or median, which is specified in the fn argument.
+        Binning can be performed via arithmetic mean or median, which is
+        specified in the fn argument.
         The default is arithmetic mean.
         """
         imdata = self.getData()
         if y is None:
             y = x
-        print("Binning image: " + str(self) + " (" + str(x) + "x" + str(y)+ ")")
+        print(
+                "Binning image: " + str(self) + " (" + str(x) + "x" + str(y)
+                + ")")
         h = len(imdata)
         w = len(imdata[0])
         hb = h - h%y
-        wb = w - w%x # reduces the image size in case it isn't divisible by window size
+        wb = w - w%x 
+        # reduces the image size in case it isn't divisible by window size
         imdata_resized = imdata.copy()
         imdata_resized.resize((hb, w, 3))
         imdata_resized1 = np.empty((hb, wb, 3))
         for r in range(len(imdata_resized)):
             imdata_resized1[r] = np.resize(imdata_resized[r], (wb, 3))
-        imdata_resized1 = imdata_resized1.reshape((h//x, wb, y, 3), order='A')      
-        imdata_resized1 = imdata_resized1.reshape((h//y, w//x, y, x, 3), order='F')
-        bindata=np.empty((h//y, w//x, 3)) # reshapes the matrix into a set of arrays with length x*y
+        imdata_resized1 = imdata_resized1.reshape((h//x, wb, y, 3), order='A')
+        imdata_resized1 = imdata_resized1.reshape(
+                (h//y, w//x, y, x, 3), order='F'
+                )
+        bindata=np.empty((h//y, w//x, 3))
+        # reshapes the matrix into a set of arrays with length x*y
         for r in range(len(bindata)):
-            for c in range(len(bindata[r])): # bins the arrays using the specified function
+            for c in range(len(bindata[r])):
+                # bins the arrays using the specified function
                 if fn is 'mean':
                     bindata[r][c] = np.mean(imdata_resized1[r][c])
                 elif fn is 'median':
@@ -58,7 +81,8 @@ class DSLRImage:
                 else:
                     raise ValueError('Invalid argument for \'fn\' parameter')
         bindata = np.resize(bindata, (h//y, w//x, 1, 1, 3))
-        bindata = bindata.reshape(h//y, w//x, 3) # reshapes the matrix back to its original form
+        bindata = bindata.reshape(h//y, w//x, 3)
+        # reshapes the matrix back to its original form
         self._setData(bindata)
         
     def extractChannel(self, color):
@@ -87,8 +111,11 @@ class DSLRImage:
         np.save(self.tmpPath + self.fname, idata)
         
     def _genPath(self):
-        # generates a serialized file name in the format imagetype_ordinalnumber
-        # if the image is monochrome, the format is imagetype_ordinalnumber_color
+        # generates a serialized file name in the format 
+        # imagetype_ordinalnumber
+        #
+        # if the image is monochrome, the format is
+        # imagetype_ordinalnumber_color
         cls = type(self)
         itype = self.imtype
         try:
@@ -121,7 +148,9 @@ class DSLRImage:
             idata = img.postprocess()
             with open(impath, 'rb') as f:
                 tags = exifread.process_file(f)
-                exptime = float(Fraction(tags.get('EXIF ExposureTime').printable))
+                exptime = float(
+                        Fraction(tags.get('EXIF ExposureTime').printable)
+                        )
                 dt = tags.get('EXIF DateTimeOriginal').printable
                 (date, _,time) = dt.partition(' ')
                 dt = tuple([int(i) for i in date.split(':') + time.split(':')])
@@ -147,10 +176,12 @@ class DSLRImage:
 
 class Monochrome(DSLRImage):
     """A subtype of DSLRImage for single-color images.
-    Is meant to be generated from the extractChannel method. Avoid using the class directly.
+    Is meant to be generated from the extractChannel method. Avoid using the
+    class directly.
     """
     def __init__(
-            self, imdata, impath, itype=ImageType.LIGHT, color=Color.GREEN 
+            self, imdata, impath, itype=ImageType.LIGHT, color=Color.GREEN,
+            stacked=False
             ):
         self.impath = impath
         self.imcolor = color
@@ -160,11 +191,16 @@ class Monochrome(DSLRImage):
         del imdata
         
     def binImage(self, x, y=None, fn='mean'):
-        """Same as the binImage method in the superclass, but optimized for monochrome arrays."""
+        """Same as the binImage method in the superclass, but optimized for
+        monochrome arrays.
+        """
         imdata = self.getData()
         if y is None:
             y = x
-        print("Binning image: " + str(self) + " (" + str(x) + "x" + str(y)+ ")")
+        print(
+                "Binning image: " + str(self) + " (" + str(x) + "x" + str(y)
+                + ")"
+                )
         h = len(imdata)
         w = len(imdata[0])
         hb = h - h%y
@@ -174,8 +210,10 @@ class Monochrome(DSLRImage):
         imdata_resized1 = np.empty((hb, wb))
         for r in range(len(imdata_resized)):
             imdata_resized1[r] = np.resize(imdata_resized[r], wb)
-        imdata_resized1 = imdata_resized1.reshape((h//x, wb, y), order='A')      
-        imdata_resized1 = imdata_resized1.reshape((h//y, w//x, y, x), order='F')
+        imdata_resized1 = imdata_resized1.reshape((h//x, wb, y), order='A')
+        imdata_resized1 = imdata_resized1.reshape(
+                (h//y, w//x, y, x), order='F'
+                )
         bindata=np.empty((h//y, w//x))
         for r in range(len(bindata)):
             for c in range(len(bindata[r])):
