@@ -17,16 +17,16 @@ def stack(images, mode='median'):
         itypes = {im.imtype for im in images}
     if(len(itypes) > 1):
         raise ValueError("Frames must be the same image type")
-    
+
     imdata = np.array([im._getData() for im in images])
-    
+
     if mode is 'median':
         stack = np.median(imdata, axis=0)
     elif mode is 'mean':
         stack = np.mean(imdata, axis=0)
     else:
         raise ValueError("Invalid argument for 'mode' parameter")
-        
+
     return Monochrome(
             stack, images[0].impath, images[0].imtype, images[0].imcolor,
             stacked=True

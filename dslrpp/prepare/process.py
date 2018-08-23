@@ -19,7 +19,7 @@ class ImageType(IntEnum):
     BIAS = 1
     DARK = 2
     FLAT = 3
-	
+
 class Color(IntEnum):
     RED = 0
     GREEN = 1
@@ -36,12 +36,15 @@ class DSLRImage:
             ):
         self.impath = impath
         self.imtype = itype
-        imdata, self.exptime, self.jdate = self.__parseData(impath)
-        print("Initializing image class: " + str(self))
+        self.imdata, self.exptime, self.jdate = self.__parseData(impath)
+        try:
+            self.imcolor
+        except(AttributeError):
+            self.imcolor = None
         self._genPath() # generates the serialized filename
-        self._setData(imdata)
-        del imdata
-            
+        print("Initializing image class: " + str(self))
+        self._setData(self.imdata)
+
     def binImage(self, x, y=None, fn='mean'):
         """Bins the data from the image. Requires the window width.
         If window height is not specified, the window is assumed to be square.
@@ -58,7 +61,7 @@ class DSLRImage:
         h = len(imdata)
         w = len(imdata[0])
         hb = h - h%y
-        wb = w - w%x 
+        wb = w - w%x
         # reduces the image size in case it isn't divisible by window size
         imdata_resized = imdata.copy()
         imdata_resized.resize((hb, w, 3))
@@ -84,13 +87,13 @@ class DSLRImage:
         bindata = bindata.reshape(h//y, w//x, 3)
         # reshapes the matrix back to its original form
         self._setData(bindata)
-        
+
     def extractChannel(self, color):
         """Extracts the specified channel (R,G,B) from the RGB image."""
         print("Extracting " + color.name + " channel from image " + str(self))
         imdata = self.getData()[:,:,color.value]
         return Monochrome(imdata, self.impath, self.imtype, color)
-    
+
     def saveFITS(self, impath):
         """Writes the data to a FITS file."""
         impath += self.fname + ".fits"
@@ -101,17 +104,17 @@ class DSLRImage:
         except OSError:
             os.remove(impath)
             hdu.writeto(impath)
-            
+
     def getData(self):
         # loads the image data from the temporary folder
         return np.load(self.tmpPath + self.fname + '.npy')
-    
+
     def _setData(self, idata):
         # writes the image data to the temporary folder
         np.save(self.tmpPath + self.fname, idata)
-        
+
     def _genPath(self):
-        # generates a serialized file name in the format 
+        # generates a serialized file name in the format
         # imagetype_ordinalnumber
         #
         # if the image is monochrome, the format is
@@ -121,7 +124,6 @@ class DSLRImage:
         try:
             color = self.imcolor.value
         except(AttributeError):
-            self.imcolor = None
             color = 3
         if(cls.fnum[itype][color] is None):
             cls.fnum[itype][color] = 0
@@ -134,13 +136,13 @@ class DSLRImage:
         except AttributeError:
             self.fname = ftype + "_" + str(cls.fnum[itype][color])
         cls.fnum[itype][color] += 1
-        
+
         self.tmpPath = os.path.dirname(self.impath) + '\\temp\\'
         try:
             os.makedirs(self.tmpPath)
         except(OSError):
             pass
-        
+
     def __parseData(self, impath):
         # reads the metadata from the RAW file
         print("Reading file: " + impath)
@@ -158,13 +160,14 @@ class DSLRImage:
                 #ofs = tags.get('EXIF TimeZoneOffset').printable
                 jdate = Time(dt, format='isot', scale='utc').jd
             return idata, exptime, jdate
-        
+
     def __str__(self):
         return("DSLRImage(imtype=" + str(self.imtype)
                           + ", color=" + str(self.imcolor)
                           + ", fname=" + self.fname
-                          + ")")
-        
+                          + ")"
+                    )
+
     def __del__(self):
         # deletes the temporary file/folder
         print("Deleting image class: " + str(self))
@@ -189,7 +192,7 @@ class Monochrome(DSLRImage):
         self._genPath()
         self._setData(imdata)
         del imdata
-        
+
     def binImage(self, x, y=None, fn='mean'):
         """Same as the binImage method in the superclass, but optimized for
         monochrome arrays.
