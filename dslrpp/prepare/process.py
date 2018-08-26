@@ -10,6 +10,7 @@ from fractions import Fraction
 from datetime import datetime
 from astropy.time import Time
 from astropy.io import fits
+from skimage.measure import block_reduce
 import exifread
 import numpy as np
 import rawpy
@@ -42,17 +43,6 @@ class DSLRImage:
         print("Initializing image class: " + str(self))
 
     def binImage(self, x, y=None, fn='mean'):
-        """
-        Probaj ovo da koristis za binovanje
-       https://stackoverflow.com/questions/21921178/binning-a-numpy-array/42024730#42024730
-       
-       Jedino sto ce ti zapravo biti dodatna provera je da li je slika RGB ili je samo 2D niz.
-
-       Testirao sam ovo, svidja mi se ova ideja sa prosledjivanjem funkcije 
-       npr mozes da kazes binArray(slika, dimenzija, bst, bsz, np.mean/np.sum/np.meadian (ako postoji zapravo ta funkcija..)
-       """
-
-
         """Bins the data from the image. Requires the window width.
         If window height is not specified, the window is assumed to be square.
         Binning can be performed via arithmetic mean or median, which is
@@ -64,33 +54,36 @@ class DSLRImage:
         print(
                 "Binning image: " + str(self) + " (" + str(x) + "x" + str(y)
                 + ")")
-        h = len(self.imdata)
-        w = len(self.imdata[0])
-        hb = h - h%y
-        wb = w - w%x
-        # reduces the image size in case it isn't divisible by window size
-        imdata_resized = np.resize(self.imdata, (hb, w, 3))
-        imdata_resized1 = np.empty((hb, wb, 3))
-        for r in range(len(imdata_resized)):
-            imdata_resized1[r] = np.resize(imdata_resized[r], (wb, 3))
-        imdata_resized1 = imdata_resized1.reshape((h//x, wb, y, 3), order='A')
-        imdata_resized1 = imdata_resized1.reshape(
-                (h//y, w//x, y, x, 3), order='F'
+#        h = len(self.imdata)
+#        w = len(self.imdata[0])
+#        hb = h - h%y
+#        wb = w - w%x
+#        # reduces the image size in case it isn't divisible by window size
+#        imdata_resized = np.resize(self.imdata, (hb, w, 3))
+#        imdata_resized1 = np.empty((hb, wb, 3))
+#        for r in range(len(imdata_resized)):
+#            imdata_resized1[r] = np.resize(imdata_resized[r], (wb, 3))
+#        imdata_resized1 = imdata_resized1.reshape((h//x, wb, y, 3), order='A')
+#        imdata_resized1 = imdata_resized1.reshape(
+#                (h//y, w//x, y, x, 3), order='F'
+#                )
+#        bindata=np.empty((h//y, w//x, 3))
+#        # reshapes the matrix into a set of arrays with length x*y
+#        for r in range(len(bindata)):
+#            for c in range(len(bindata[r])):
+#                # bins the arrays using the specified function
+#                if fn is 'mean':
+#                    bindata[r][c] = np.mean(imdata_resized1[r][c])
+#                elif fn is 'median':
+#                    bindata[r][c] = np.median(imdata_resized1[r][c])
+#                else:
+#                    raise ValueError('Invalid argument for \'fn\' parameter')
+#        bindata = np.resize(bindata, (h//y, w//x, 1, 1, 3))
+#        bindata = bindata.reshape(h//y, w//x, 3)
+#        # reshapes the matrix back to its original form
+        bindata = block_reduce(
+                self.imdata, (x,y,1), np.mean, np.mean(self.imdata)
                 )
-        bindata=np.empty((h//y, w//x, 3))
-        # reshapes the matrix into a set of arrays with length x*y
-        for r in range(len(bindata)):
-            for c in range(len(bindata[r])):
-                # bins the arrays using the specified function
-                if fn is 'mean':
-                    bindata[r][c] = np.mean(imdata_resized1[r][c])
-                elif fn is 'median':
-                    bindata[r][c] = np.median(imdata_resized1[r][c])
-                else:
-                    raise ValueError('Invalid argument for \'fn\' parameter')
-        bindata = np.resize(bindata, (h//y, w//x, 1, 1, 3))
-        bindata = bindata.reshape(h//y, w//x, 3)
-        # reshapes the matrix back to its original form
         self.imdata = bindata
 
     def extractChannel(self, color):
@@ -101,16 +94,20 @@ class DSLRImage:
 
     def saveFITS(self, impath):
         """Writes the data to a FITS file."""
-        impath += self.fname + ".fits"
+        impath += self.fname
         hdu = fits.PrimaryHDU(self.imdata)
         print("Writing image " + str(self) + " to file: " + impath)
+        n = 1
         try:
-            hdu.writeto(impath)
+            hdu.writeto(impath + ".fits")
         except OSError:
-            os.remove(impath) 
-            #WOWOWOWOWOWOW POLAKO
-            #Napravi sliku sa 'impath'+'_1'+'.fits' necemo ovako
-            hdu.writeto(impath)
+            error = True
+            while(error is True):
+                try:
+                    hdu.writeto(impath + "_" + n + ".fits")
+                    error = False
+                except OSError:
+                    n += 1
 
     #def getData(self):
         # loads the image data from the temporary folder
@@ -121,8 +118,6 @@ class DSLRImage:
         #np.save(self.tmpPath + self.fname, idata)
 
     def _genPath(self):
-        ''' Zasto nam je ovo potrebno? '''
-
         # generates a serialized file name in the format
         # imagetype_ordinalnumber
         #
@@ -186,10 +181,6 @@ class DSLRImage:
 #        except OSError:
 #            pass
 
-
-
-
-#Da li nam je neophodna ova klasa?
 class Monochrome(DSLRImage):
     """A subtype of DSLRImage for single-color images.
     Is meant to be generated from the extractChannel method. Avoid using the
@@ -208,7 +199,6 @@ class Monochrome(DSLRImage):
         self.imdata = imdata
 
     def binImage(self, x, y=None, fn='mean'):
-        # razmisli da ovo samo bude funkcija van klase
         """Same as the binImage method in the superclass, but optimized for
         monochrome arrays.
         """
@@ -218,27 +208,30 @@ class Monochrome(DSLRImage):
                 "Binning monochrome image: " + str(self)
                 + " (" + str(x) + "x" + str(y) + ")"
                 )
-        h = len(self.imdata)
-        w = len(self.imdata[0])
-        hb = h - h%y
-        wb = w - w%x
-        imdata_resized = np.resize(self.imdata, (hb, w))
-        imdata_resized1 = np.empty((hb, wb))
-        for r in range(len(imdata_resized)):
-            imdata_resized1[r] = np.resize(imdata_resized[r], wb)
-        imdata_resized1 = imdata_resized1.reshape((h//x, wb, y), order='A')
-        imdata_resized1 = imdata_resized1.reshape(
-                (h//y, w//x, y, x), order='F'
+#        h = len(self.imdata)
+#        w = len(self.imdata[0])
+#        hb = h - h%y
+#        wb = w - w%x
+#        imdata_resized = np.resize(self.imdata, (hb, w))
+#        imdata_resized1 = np.empty((hb, wb))
+#        for r in range(len(imdata_resized)):
+#            imdata_resized1[r] = np.resize(imdata_resized[r], wb)
+#        imdata_resized1 = imdata_resized1.reshape((h//x, wb, y), order='A')
+#        imdata_resized1 = imdata_resized1.reshape(
+#                (h//y, w//x, y, x), order='F'
+#                )
+#        bindata=np.empty((h//y, w//x))
+#        for r in range(len(bindata)):
+#            for c in range(len(bindata[r])):
+#                if fn is 'mean':
+#                    bindata[r][c] = np.mean(imdata_resized1[r][c])
+#                elif fn is 'median':
+#                    bindata[r][c] = np.median(imdata_resized1[r][c])
+#                else:
+#                    raise ValueError('Invalid argument for \'fn\' parameter')
+#        bindata = np.resize(bindata, (h//y, w//x, 1, 1))
+#        bindata = bindata.reshape(h//y, w//x)
+        bindata = block_reduce(
+                self.imdata, (x,y), np.mean, np.mean(self.imdata)
                 )
-        bindata=np.empty((h//y, w//x))
-        for r in range(len(bindata)):
-            for c in range(len(bindata[r])):
-                if fn is 'mean':
-                    bindata[r][c] = np.mean(imdata_resized1[r][c])
-                elif fn is 'median':
-                    bindata[r][c] = np.median(imdata_resized1[r][c])
-                else:
-                    raise ValueError('Invalid argument for \'fn\' parameter')
-        bindata = np.resize(bindata, (h//y, w//x, 1, 1))
-        bindata = bindata.reshape(h//y, w//x)
         self.imdata = bindata
