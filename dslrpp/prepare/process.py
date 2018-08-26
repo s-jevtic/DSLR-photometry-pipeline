@@ -42,6 +42,17 @@ class DSLRImage:
         print("Initializing image class: " + str(self))
 
     def binImage(self, x, y=None, fn='mean'):
+        """
+        Probaj ovo da koristis za binovanje
+       https://stackoverflow.com/questions/21921178/binning-a-numpy-array/42024730#42024730
+       
+       Jedino sto ce ti zapravo biti dodatna provera je da li je slika RGB ili je samo 2D niz.
+
+       Testirao sam ovo, svidja mi se ova ideja sa prosledjivanjem funkcije 
+       npr mozes da kazes binArray(slika, dimenzija, bst, bsz, np.mean/np.sum/np.meadian (ako postoji zapravo ta funkcija..)
+       """
+
+
         """Bins the data from the image. Requires the window width.
         If window height is not specified, the window is assumed to be square.
         Binning can be performed via arithmetic mean or median, which is
@@ -96,7 +107,9 @@ class DSLRImage:
         try:
             hdu.writeto(impath)
         except OSError:
-            os.remove(impath)
+            os.remove(impath) 
+            #WOWOWOWOWOWOW POLAKO
+            #Napravi sliku sa 'impath'+'_1'+'.fits' necemo ovako
             hdu.writeto(impath)
 
     #def getData(self):
@@ -108,6 +121,8 @@ class DSLRImage:
         #np.save(self.tmpPath + self.fname, idata)
 
     def _genPath(self):
+        ''' Zasto nam je ovo potrebno? '''
+
         # generates a serialized file name in the format
         # imagetype_ordinalnumber
         #
@@ -171,6 +186,10 @@ class DSLRImage:
 #        except OSError:
 #            pass
 
+
+
+
+#Da li nam je neophodna ova klasa?
 class Monochrome(DSLRImage):
     """A subtype of DSLRImage for single-color images.
     Is meant to be generated from the extractChannel method. Avoid using the
@@ -189,6 +208,7 @@ class Monochrome(DSLRImage):
         self.imdata = imdata
 
     def binImage(self, x, y=None, fn='mean'):
+        # razmisli da ovo samo bude funkcija van klase
         """Same as the binImage method in the superclass, but optimized for
         monochrome arrays.
         """
