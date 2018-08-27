@@ -96,7 +96,12 @@ class DSLRImage:
         """Writes the data to a FITS file."""
         impath += self.fname
         hdu = fits.PrimaryHDU(self.imdata)
-        print("Writing image " + str(self) + " to file: " + impath)
+        print("Writing image " + str(self) + " to file: " + impath + ".fits")
+        hdu.header['EXPTIME'] = self.exptime
+        d = Time(self.jdate, format='jd', scale='utc').iso.split()
+        hdu.header['DATE-OBS'] = d[0]
+        hdu.header['TIME-OBS'] = d[1]
+        hdu.header['IMAGETYP'] = self.imtype.name
         n = 1
         try:
             hdu.writeto(impath + ".fits")
@@ -104,7 +109,7 @@ class DSLRImage:
             error = True
             while(error is True):
                 try:
-                    hdu.writeto(impath + "_" + n + ".fits")
+                    hdu.writeto(impath + "_" + str(n) + ".fits")
                     error = False
                 except OSError:
                     n += 1
@@ -151,7 +156,9 @@ class DSLRImage:
         # reads the metadata from the RAW file
         print("Reading file: " + impath)
         with rawpy.imread(impath) as img:
-            idata = img.postprocess()
+            idata = img.postprocess(
+                    output_bps=16, no_auto_bright=True, #no_auto_scale=True
+                    )
             with open(impath, 'rb') as f:
                 tags = exifread.process_file(f)
                 exptime = float(

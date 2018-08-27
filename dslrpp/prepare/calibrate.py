@@ -84,4 +84,3 @@ def calibrate(
         im.imdata = np.subtract(im.imdata, bias.imdata)
         print(im.imdata, '/\n', flat.imdata)
         im.imdata = np.true_divide(im.imdata, flat.imdata)
-        #im.imdata = im.imdata.astype('uint8')
