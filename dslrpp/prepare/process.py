@@ -35,12 +35,15 @@ class DSLRImage:
     def __init__(
             self, impath, itype=ImageType.LIGHT, color=None
             ):
+        print('Initializing image class from file:', impath)
         self.impath = impath
         self.imtype = itype
-        self.imdata, self.exptime, self.jdate = self.__parseData(impath)
         self.imcolor = None
+        self.imdata, self.exptime, self.jdate = self.__parseData(impath)
         self._genPath() # generates the serialized filename
-        print("Initializing image class: " + str(self))
+        self.binX = 1
+        self.binY = 1
+        print("Initialized image class: " + str(self))
 
     def binImage(self, x, y=None, fn='mean'):
         """Bins the data from the image. Requires the window width.
@@ -85,6 +88,8 @@ class DSLRImage:
                 self.imdata, (x,y,1), np.mean, np.mean(self.imdata)
                 )
         self.imdata = bindata
+        self.binX *= x
+        self.binY *= y
 
     def extractChannel(self, color):
         """Extracts the specified channel (R,G,B) from the RGB image."""
@@ -102,6 +107,8 @@ class DSLRImage:
         hdu.header['DATE-OBS'] = d[0]
         hdu.header['TIME-OBS'] = d[1]
         hdu.header['IMAGETYP'] = self.imtype.name
+        hdu.header['XBINNING'] = self.binX
+        hdu.header['YBINNING'] = self.binY
         n = 1
         try:
             hdu.writeto(impath + ".fits")
@@ -113,6 +120,10 @@ class DSLRImage:
                     error = False
                 except OSError:
                     n += 1
+            print(
+                    "File of the same name already exists, file written to",
+                    impath + "_" + str(n) + ".fits"
+                  )
 
     #def getData(self):
         # loads the image data from the temporary folder
@@ -201,6 +212,8 @@ class Monochrome(DSLRImage):
         self.jdate = origin.jdate
         self.impath = origin.impath
         self.imtype = origin.imtype
+        self.binX = origin.binX
+        self.binY = origin.binY
         self.imcolor = color
         self._genPath()
         self.imdata = imdata
@@ -242,3 +255,5 @@ class Monochrome(DSLRImage):
                 self.imdata, (x,y), np.mean, np.mean(self.imdata)
                 )
         self.imdata = bindata
+        self.binX *= x
+        self.binY *= y
