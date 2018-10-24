@@ -13,7 +13,7 @@ from astropy.io import fits
 from skimage.measure import block_reduce
 import exifread
 import numpy as np
-import rawpy
+from rawkit.raw import Raw
 
 class ImageType(IntEnum):
     LIGHT = 0
@@ -25,6 +25,15 @@ class Color(IntEnum):
     RED = 0
     GREEN = 1
     BLUE = 2
+    
+def demosaic(im):
+    _im = np.resize(im, (len(im)-len(im)%2, len(im[0])-len(im[0])%2))
+    _im = np.reshape(_im, (len(im)//2, 2, len(im[0])//2, 2))
+    im = np.empty((len(im)//2, len(im[0])//2,3))
+    im[:,:,0] = _im[:,0,:,0]
+    im[:,:,1] = (_im[:,0,:,1] + _im[:,1,:,0])/2
+    im[:,:,2] = _im[:,1,:,1]
+    return im
 
 class DSLRImage:
     """Loads an image from RAW format, stores the metadata and writes the image
@@ -166,10 +175,8 @@ class DSLRImage:
     def __parseData(self, impath):
         # reads the metadata from the RAW file
         print("Reading file: " + impath)
-        with rawpy.imread(impath) as img:
-            idata = img.postprocess(
-                    output_bps=16, no_auto_bright=True, #no_auto_scale=True
-                    )
+        with Raw(impath) as img:
+            idata = demosaic(img.raw_image())
             with open(impath, 'rb') as f:
                 tags = exifread.process_file(f)
                 exptime = float(
