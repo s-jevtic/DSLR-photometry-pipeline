@@ -27,6 +27,8 @@ class Color(IntEnum):
     BLUE = 2
     
 def demosaic(im):
+    """Demosaics the image, i.e. turns a RGGB monochrome array into a RGB array.
+    """
     _im = np.resize(im, (len(im)-len(im)%2, len(im[0])-len(im[0])%2))
     _im = np.reshape(_im, (len(im)//2, 2, len(im[0])//2, 2))
     im = np.empty((len(im)//2, len(im[0])//2,3))
@@ -50,8 +52,8 @@ class DSLRImage:
         self.imcolor = None
         self.imdata, self.exptime, self.jdate = self.__parseData(impath)
         self._genPath() # generates the serialized filename
-        self.binX = 1
-        self.binY = 1
+        self._binX = 1
+        self._binY = 1
         print("Initialized image class: " + str(self))
 
     def binImage(self, x, y=None, fn='mean'):
@@ -97,42 +99,14 @@ class DSLRImage:
                 self.imdata, (x,y,1), np.mean, np.mean(self.imdata)
                 )
         self.imdata = bindata
-        self.binX *= x
-        self.binY *= y
+        self._binX *= x
+        self._binY *= y
 
     def extractChannel(self, color):
         """Extracts the specified channel (R,G,B) from the RGB image."""
         print("Extracting " + color.name + " channel from image " + str(self))
         imdata = self.imdata[:,:,color.value]
         return Monochrome(imdata, self, color)
-
-    def saveFITS(self, impath):
-        """Writes the data to a FITS file."""
-        impath += self.fname
-        hdu = fits.PrimaryHDU(self.imdata)
-        print("Writing image " + str(self) + " to file: " + impath + ".fits")
-        hdu.header['EXPTIME'] = self.exptime
-        d = Time(self.jdate, format='jd', scale='utc').iso.split()
-        hdu.header['DATE-OBS'] = d[0]
-        hdu.header['TIME-OBS'] = d[1]
-        hdu.header['IMAGETYP'] = self.imtype.name
-        hdu.header['XBINNING'] = self.binX
-        hdu.header['YBINNING'] = self.binY
-        n = 1
-        try:
-            hdu.writeto(impath + ".fits")
-        except OSError:
-            error = True
-            while(error is True):
-                try:
-                    hdu.writeto(impath + "_" + str(n) + ".fits")
-                    error = False
-                except OSError:
-                    n += 1
-            print(
-                    "File of the same name already exists, file written to",
-                    impath + "_" + str(n) + ".fits"
-                  )
 
     #def getData(self):
         # loads the image data from the temporary folder
@@ -219,11 +193,43 @@ class Monochrome(DSLRImage):
         self.jdate = origin.jdate
         self.impath = origin.impath
         self.imtype = origin.imtype
-        self.binX = origin.binX
-        self.binY = origin.binY
+        self._binX = origin._binX
+        self._binY = origin._binY
         self.imcolor = color
         self._genPath()
         self.imdata = imdata
+
+    def saveFITS(self, path, fname=None):
+        """Writes the data to a FITS file."""
+        impath = path + (self.fname if fname is None else fname)
+        hdu = fits.PrimaryHDU(self.imdata.astype('uint16'))
+        print("Writing image " + str(self) + " to file: " + impath + ".fits")
+        hdu.header['EXPTIME'] = self.exptime
+        d = Time(self.jdate, format='jd', scale='utc').iso.split()
+        hdu.header['DATE-OBS'] = d[0]
+        hdu.header['TIME-OBS'] = d[1]
+        hdu.header['IMAGETYP'] = self.imtype.name
+        hdu.header['XBINNING'] = self._binX
+        hdu.header['YBINNING'] = self._binY
+        n = 1
+        try:
+            hdu.writeto(impath + ".fits")
+        except OSError as e:
+            if(type(e) == FileNotFoundError):
+                os.makedirs(path)
+                hdu.writeto(impath + ".fits")
+                return
+            error = True
+            while(error is True):
+                try:
+                    hdu.writeto(impath + "_" + str(n) + ".fits")
+                    error = False
+                except OSError:
+                    n += 1
+            print(
+                    "File of the same name already exists, file written to",
+                    impath + "_" + str(n) + ".fits"
+                  )
 
     def binImage(self, x, y=None, fn='mean'):
         """Same as the binImage method in the superclass, but optimized for
@@ -262,5 +268,5 @@ class Monochrome(DSLRImage):
                 self.imdata, (x,y), np.mean, np.mean(self.imdata)
                 )
         self.imdata = bindata
-        self.binX *= x
-        self.binY *= y
+        self._binX *= x
+        self._binY *= y

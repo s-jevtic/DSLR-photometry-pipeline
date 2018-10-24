@@ -78,9 +78,6 @@ def calibrate(
                     "respective light frames (provided " + str(fdark.exptime)
                     + " instead of " + str(im.exptime) + ")"
                     )
-        print(im.imdata, '-\n', dark.imdata)
         im.imdata = np.subtract(im.imdata, dark.imdata)
-        print(im.imdata, '-\n', bias.imdata)
         im.imdata = np.subtract(im.imdata, bias.imdata)
-        print(im.imdata, '/\n', flat.imdata)
-        im.imdata = np.true_divide(im.imdata, flat.imdata)
+        im.imdata = np.floor_divide(im.imdata, flat.imdata)
