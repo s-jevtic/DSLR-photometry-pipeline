@@ -140,7 +140,7 @@ class DSLRImage:
             self.fname = ftype + "_" + str(cls.fnum[itype][color])
         cls.fnum[itype][color] += 1
 
-        self.tmpPath = os.path.dirname(self.impath) + '\\temp\\'
+        self.tmpPath = os.path.dirname(self.impath) + '/temp/'
         try:
             os.makedirs(self.tmpPath)
         except(OSError):
