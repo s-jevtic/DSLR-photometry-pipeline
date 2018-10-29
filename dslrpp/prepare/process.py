@@ -14,6 +14,7 @@ from skimage.measure import block_reduce
 import exifread
 import numpy as np
 from rawkit.raw import Raw
+import libraw
 
 class ImageType(IntEnum):
     LIGHT = 0
@@ -36,6 +37,18 @@ def demosaic(im):
     im[:,:,1] = (_im[:,0,:,1] + _im[:,1,:,0])/2
     im[:,:,2] = _im[:,1,:,1]
     return im
+
+def isRaw(f):
+    try:
+        Raw(f)
+        return True
+    except Exception as e:
+        if type(e) is libraw.errors.FileUnsupported:
+            print("File unsupported:", f)
+        else:
+            print("Error:", e)
+        print("Ignoring this file.")
+        return False
 
 class DSLRImage:
     """Loads an image from RAW format, stores the metadata and writes the image
@@ -105,7 +118,10 @@ class DSLRImage:
     def extractChannel(self, color):
         """Extracts the specified channel (R,G,B) from the RGB image."""
         print("Extracting " + color.name + " channel from image " + str(self))
-        imdata = self.imdata[:,:,color.value]
+        try:
+            imdata = self.imdata[:,:,color.value]
+        except AttributeError:
+            print("AttributeError for", str(self))
         return Monochrome(imdata, self, color)
 
     #def getData(self):
@@ -151,23 +167,29 @@ class DSLRImage:
         print("Reading file: " + impath)
         with Raw(impath) as img:
             idata = demosaic(img.raw_image())
-            with open(impath, 'rb') as f:
-                tags = exifread.process_file(f)
-                exptime = float(
-                        Fraction(tags.get('EXIF ExposureTime').printable)
-                        )
-                dt = tags.get('EXIF DateTimeOriginal').printable
-                (date, _,time) = dt.partition(' ')
-                dt = tuple([int(i) for i in date.split(':') + time.split(':')])
-                dt = datetime(*dt).isoformat()
-                #ofs = tags.get('EXIF TimeZoneOffset').printable
-                jdate = Time(dt, format='isot', scale='utc').jd
-            return idata, exptime, jdate
+        with open(impath, 'rb') as f:
+            tags = exifread.process_file(f)
+            exptime = float(
+                    Fraction(tags.get('EXIF ExposureTime').printable)
+                    )
+            dt = tags.get('EXIF DateTimeOriginal').printable
+            (date, _,time) = dt.partition(' ')
+            dt = tuple([int(i) for i in date.split(':') + time.split(':')])
+            dt = datetime(*dt).isoformat()
+            #ofs = tags.get('EXIF TimeZoneOffset').printable
+            jdate = Time(dt, format='isot', scale='utc').jd
+        return idata, exptime, jdate
 
     def __str__(self):
-        return("DSLRImage(imtype=" + str(self.imtype)
+        try:
+            return("DSLRImage(imtype=" + str(self.imtype)
                           + ", color=" + str(self.imcolor)
                           + ", fname=" + self.fname
+                          + ")"
+                    )
+        except(AttributeError):
+            return("DSLRImage(imtype=" + str(self.imtype)
+                          + ", color=" + str(self.imcolor)
                           + ")"
                     )
 
