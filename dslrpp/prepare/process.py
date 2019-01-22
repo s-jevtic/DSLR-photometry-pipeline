@@ -16,27 +16,32 @@ import numpy as np
 from rawkit.raw import Raw
 import libraw
 
+
 class ImageType(IntEnum):
     LIGHT = 0
     BIAS = 1
     DARK = 2
     FLAT = 3
 
+
 class Color(IntEnum):
     RED = 0
     GREEN = 1
     BLUE = 2
-    
+
+
 def demosaic(im):
-    """Demosaics the image, i.e. turns a RGGB monochrome array into a RGB array.
+    """Demosaics the image,
+    i.e. turns a RGGB monochrome array into a RGB array.
     """
-    _im = np.resize(im, (len(im)-len(im)%2, len(im[0])-len(im[0])%2))
+    _im = np.resize(im, (len(im)-len(im) % 2, len(im[0])-len(im[0]) % 2))
     _im = np.reshape(_im, (len(im)//2, 2, len(im[0])//2, 2))
-    im = np.empty((len(im)//2, len(im[0])//2,3))
-    im[:,:,0] = _im[:,0,:,0]
-    im[:,:,1] = (_im[:,0,:,1] + _im[:,1,:,0])/2
-    im[:,:,2] = _im[:,1,:,1]
+    im = np.empty((len(im)//2, len(im[0])//2, 3))
+    im[:, :, 0] = _im[:, 0, :, 0]
+    im[:, :, 1] = (_im[:, 0, :, 1] + _im[:, 1, :, 0])/2
+    im[:, :, 2] = _im[:, 1, :, 1]
     return im
+
 
 def isRaw(f):
     try:
@@ -50,12 +55,14 @@ def isRaw(f):
         print("Ignoring this file.")
         return False
 
+
 class DSLRImage:
     """Loads an image from RAW format, stores the metadata and writes the image
     as a NumPy array.
     """
-    fnum=np.zeros((4,4), dtype=int)
+    fnum = np.zeros((4, 4), dtype=int)
     # Declares a NumPy 2d array for filename serialization
+
     def __init__(
             self, impath, itype=ImageType.LIGHT, color=None
             ):
@@ -64,7 +71,7 @@ class DSLRImage:
         self.imtype = itype
         self.imcolor = None
         self.imdata, self.exptime, self.jdate = self.__parseData(impath)
-        self._genPath() # generates the serialized filename
+        self._genPath()  # generates the serialized filename
         self._binX = 1
         self._binY = 1
         print("Initialized image class: " + str(self))
@@ -109,7 +116,7 @@ class DSLRImage:
 #        bindata = bindata.reshape(h//y, w//x, 3)
 #        # reshapes the matrix back to its original form
         bindata = block_reduce(
-                self.imdata, (x,y,1), np.mean, np.mean(self.imdata)
+                self.imdata, (x, y, 1), np.mean, np.mean(self.imdata)
                 )
         self.imdata = bindata
         self._binX *= x
@@ -119,7 +126,7 @@ class DSLRImage:
         """Extracts the specified channel (R,G,B) from the RGB image."""
         print("Extracting " + color.name + " channel from image " + str(self))
         try:
-            imdata = self.imdata[:,:,color.value]
+            imdata = self.imdata[:, :, color.value]
         except AttributeError:
             print("AttributeError for", str(self))
         return Monochrome(imdata, self, color)
@@ -146,7 +153,7 @@ class DSLRImage:
             color = 3
         if(cls.fnum[itype][color] is None):
             cls.fnum[itype][color] = 0
-        ftype = {0:"light", 1:"bias", 2:"dark", 3:"flat"}[itype]
+        ftype = {0: "light", 1: "bias", 2: "dark", 3: "flat"}[itype]
         try:
             self.fname = (
                     ftype + "_" + str(cls.fnum[itype][color])
@@ -173,7 +180,7 @@ class DSLRImage:
                     Fraction(tags.get('EXIF ExposureTime').printable)
                     )
             dt = tags.get('EXIF DateTimeOriginal').printable
-            (date, _,time) = dt.partition(' ')
+            (date, _, time) = dt.partition(' ')
             dt = tuple([int(i) for i in date.split(':') + time.split(':')])
             dt = datetime(*dt).isoformat()
             #ofs = tags.get('EXIF TimeZoneOffset').printable
@@ -182,15 +189,17 @@ class DSLRImage:
 
     def __str__(self):
         try:
-            return("DSLRImage(imtype=" + str(self.imtype)
-                          + ", color=" + str(self.imcolor)
-                          + ", fname=" + self.fname
-                          + ")"
+            return(
+                    "DSLRImage(imtype=" + str(self.imtype)
+                    + ", color=" + str(self.imcolor)
+                    + ", fname=" + self.fname
+                    + ")"
                     )
         except(AttributeError):
-            return("DSLRImage(imtype=" + str(self.imtype)
-                          + ", color=" + str(self.imcolor)
-                          + ")"
+            return(
+                    "DSLRImage(imtype=" + str(self.imtype)
+                    + ", color=" + str(self.imcolor)
+                    + ")"
                     )
 
     def __del__(self):
@@ -201,6 +210,7 @@ class DSLRImage:
 #            os.rmdir(self.tmpPath)
 #        except OSError:
 #            pass
+
 
 class Monochrome(DSLRImage):
     """A subtype of DSLRImage for single-color images.
@@ -287,7 +297,7 @@ class Monochrome(DSLRImage):
 #        bindata = np.resize(bindata, (h//y, w//x, 1, 1))
 #        bindata = bindata.reshape(h//y, w//x)
         bindata = block_reduce(
-                self.imdata, (x,y), np.mean, np.mean(self.imdata)
+                self.imdata, (x, y), np.mean, np.mean(self.imdata)
                 )
         self.imdata = bindata
         self._binX *= x

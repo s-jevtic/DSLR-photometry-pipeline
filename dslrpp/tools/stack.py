@@ -3,6 +3,7 @@
 import numpy as np
 from ..prepare import Monochrome
 
+
 def stack(images, mode='median'):
     """Stacks the data from several images using specified function
     (default is median). Raises exception if frames are not monochrome or

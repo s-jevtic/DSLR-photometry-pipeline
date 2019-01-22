@@ -4,6 +4,7 @@ import numpy as np
 from ..tools.stack import stack
 from .process import ImageType, Monochrome
 
+
 def calibrate(
         lights, bias, dark, flat, fbias=[], fdark=[], masterMode='median'
         ):
@@ -15,6 +16,11 @@ def calibrate(
     fields are not provided, calibration frames for light frames will be used.
     """
     images = np.concatenate((lights, bias, dark, flat, fbias, fdark))
+<<<<<<< HEAD
+=======
+
+    print("Calibrating images:", [str(im) for im in images])
+>>>>>>> 3051706143a88084f17c6a72af3d8a42c8997e7d
 
     dtypes = {type(im) for im in images}
     if dtypes != {Monochrome}:
@@ -26,20 +32,27 @@ def calibrate(
     cols = {im.imcolor for im in images}
     if(len(cols) > 1):
         raise ValueError("Frames must be the same color")
-    
+
     itypes = {im.imtype for im in lights}
     if itypes != {ImageType.LIGHT}:
-        raise ValueError("Light frames must be LIGHT image type; given:", itypes)
+        raise ValueError(
+                "Light frames must be LIGHT image type; given:", itypes
+                )
     itypes = {im.imtype for im in np.concatenate((bias, fbias))}
     if itypes != {ImageType.BIAS}:
         raise ValueError("Bias frames must be BIAS image type; given:", itypes)
     itypes = {im.imtype for im in flat}
     if itypes != {ImageType.FLAT}:
-        raise ValueError("Flat field frames must be FLAT image type; given:", itypes)
+        raise ValueError(
+                "Flat field frames must be FLAT image type; given:", itypes
+                )
     itypes = {im.imtype for im in np.concatenate((dark, fdark))}
     if itypes != {ImageType.DARK}:
-        raise ValueError("Dark frames must be DARK image type; given:", itypes)
+        raise ValueError(
+                "Dark frames must be DARK image type; given:", itypes
+                )
 
+<<<<<<< HEAD
     bias = stack(bias, mode=masterMode) # creating master bias frame
     print("Master bias: [" + str(bias.imdata.min()) + ", " + str(bias.imdata.max()) + "]")
     
@@ -62,6 +75,23 @@ def calibrate(
 
     for im in flat: # calibrating flat fields
         if len(fdark) > 0:
+=======
+    bias = stack(bias, mode=masterMode)
+    dark = stack(dark, mode=masterMode)  # creating master frames
+#    if fbias == []:
+#        fbias = bias
+#    else:
+#        print("fbias:", fbias)
+#        fbias = stack(fbias, mode=masterMode)
+#    if fdark == []:
+#        fdark = dark
+#    else:
+#        print("fdark", fdark)
+#        fdark = stack(fdark, mode=masterMode)
+
+    for im in flat:  # calibrating flat fields
+        if fdark != []:
+>>>>>>> 3051706143a88084f17c6a72af3d8a42c8997e7d
             if im.exptime != fdark.exptime:
                 raise ValueError(
                         "Dark frames must have the same exposure as their "
@@ -74,13 +104,14 @@ def calibrate(
     flat = stack(flat, mode=masterMode)
     print("Master flat: [" + str(flat.imdata.min()) + ", " + str(flat.imdata.max()) + "]")
 
-    for im in lights: # calibrating science frames
+    for im in lights:  # calibrating science frames
         if im.exptime != dark.exptime:
             raise ValueError(
                     "Dark frames must have the same exposure as their "
                     "respective light frames (provided " + str(fdark.exptime)
                     + " instead of " + str(im.exptime) + ")"
                     )
+<<<<<<< HEAD
         print(str(im) + ':')
         print('0:', '[' + str(im.imdata.min()) + ',' + str(im.imdata.max()) + ']')
         im.imdata -= dark.imdata
@@ -91,3 +122,8 @@ def calibrate(
         im.imdata /= flat.imdata
         #im.imdata /= nflat
         print('flat:', '[' + str(im.imdata.min()) + ',' + str(im.imdata.max()) + ']')
+=======
+        im.imdata = np.subtract(im.imdata, dark.imdata)
+        im.imdata = np.subtract(im.imdata, bias.imdata)
+        im.imdata = np.floor_divide(im.imdata, flat.imdata)
+>>>>>>> 3051706143a88084f17c6a72af3d8a42c8997e7d
