@@ -16,11 +16,8 @@ def calibrate(
     fields are not provided, calibration frames for light frames will be used.
     """
     images = np.concatenate((lights, bias, dark, flat, fbias, fdark))
-<<<<<<< HEAD
-=======
 
     print("Calibrating images:", [str(im) for im in images])
->>>>>>> 3051706143a88084f17c6a72af3d8a42c8997e7d
 
     dtypes = {type(im) for im in images}
     if dtypes != {Monochrome}:
@@ -52,30 +49,6 @@ def calibrate(
                 "Dark frames must be DARK image type; given:", itypes
                 )
 
-<<<<<<< HEAD
-    bias = stack(bias, mode=masterMode) # creating master bias frame
-    print("Master bias: [" + str(bias.imdata.min()) + ", " + str(bias.imdata.max()) + "]")
-    
-    if len(fbias) == 0:
-        fbias = bias
-    else:
-        fbias = stack(fbias, mode=masterMode)
-
-    for im in dark:
-        print("dark: [" + str(im.imdata.min()) + ", " + str(im.imdata.max()) + "]")
-        im.imdata -= bias.imdata
-        print("\tdark: [" + str(im.imdata.min()) + ", " + str(im.imdata.max()) + "]")
-    dark = stack(dark, mode=masterMode) # creating master dark frame
-    print("Master dark: [" + str(dark.imdata.min()) + ", " + str(dark.imdata.max()) + "]")
-    
-    if len(fdark) > 0:
-        for im in fdark:
-            im.imdata -= fbias.imdata
-        fdark = stack(fdark, mode=masterMode)
-
-    for im in flat: # calibrating flat fields
-        if len(fdark) > 0:
-=======
     bias = stack(bias, mode=masterMode)
     dark = stack(dark, mode=masterMode)  # creating master frames
 #    if fbias == []:
@@ -91,7 +64,6 @@ def calibrate(
 
     for im in flat:  # calibrating flat fields
         if fdark != []:
->>>>>>> 3051706143a88084f17c6a72af3d8a42c8997e7d
             if im.exptime != fdark.exptime:
                 raise ValueError(
                         "Dark frames must have the same exposure as their "
@@ -99,10 +71,10 @@ def calibrate(
                         + str(fdark.exptime) + " instead of "
                         + str(im.exptime) + ")"
                         )
-            im.imdata -= fdark.imdata
-            im.imdata -= fbias.imdata
+            im.imdata = np.subtract(im.imdata, fdark.imdata)
+        if fbias != []:
+            im.imdata = np.subtract(im.imdata, fbias.imdata)
     flat = stack(flat, mode=masterMode)
-    print("Master flat: [" + str(flat.imdata.min()) + ", " + str(flat.imdata.max()) + "]")
 
     for im in lights:  # calibrating science frames
         if im.exptime != dark.exptime:
@@ -111,19 +83,6 @@ def calibrate(
                     "respective light frames (provided " + str(fdark.exptime)
                     + " instead of " + str(im.exptime) + ")"
                     )
-<<<<<<< HEAD
-        print(str(im) + ':')
-        print('0:', '[' + str(im.imdata.min()) + ',' + str(im.imdata.max()) + ']')
-        im.imdata -= dark.imdata
-        print('dark:', '[' + str(im.imdata.min()) + ',' + str(im.imdata.max()) + ']')
-        im.imdata -= bias.imdata
-        print('bias:', '[' + str(im.imdata.min()) + ',' + str(im.imdata.max()) + ']')
-        nflat = flat.imdata.astype('float')/flat.imdata.mean()
-        im.imdata /= flat.imdata
-        #im.imdata /= nflat
-        print('flat:', '[' + str(im.imdata.min()) + ',' + str(im.imdata.max()) + ']')
-=======
         im.imdata = np.subtract(im.imdata, dark.imdata)
         im.imdata = np.subtract(im.imdata, bias.imdata)
         im.imdata = np.floor_divide(im.imdata, flat.imdata)
->>>>>>> 3051706143a88084f17c6a72af3d8a42c8997e7d

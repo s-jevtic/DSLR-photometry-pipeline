@@ -136,3 +136,4 @@ def sort(path, red=False, green=True, blue=False, binX=None, binY=None):
 #                    3:"Flat_fields"
 #                    }[im.imtype.value]
 #            im.saveFITS(path + "/processedB/" + fdir + "/")
+# test
