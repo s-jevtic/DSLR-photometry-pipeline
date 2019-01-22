@@ -86,3 +86,4 @@ def calibrate(
         im.imdata = np.subtract(im.imdata, dark.imdata)
         im.imdata = np.subtract(im.imdata, bias.imdata)
         im.imdata = np.floor_divide(im.imdata, flat.imdata)
+# test
