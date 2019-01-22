@@ -34,6 +34,6 @@ def stack(images, mode='median'):
         raise ValueError("Invalid argument for 'mode' parameter")
 
     return Monochrome(
-            stack.astype('uint16'), images[0], images[0].imcolor,
+            stack, images[0], images[0].imcolor,
             stacked=True
             )
