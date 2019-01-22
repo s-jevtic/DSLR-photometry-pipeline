@@ -6,6 +6,7 @@ from .process import DSLRImage, Color, ImageType, isRaw
 from .calibrate import calibrate
 import numpy as np
 
+
 def __listdir(path):
     # optimizes the os.listdir function
     return [
@@ -13,43 +14,44 @@ def __listdir(path):
             if os.path.isfile(path + '/' + d)
             ]
 
+
 def __makedirs(path):
     # optimizes the os.makedirs function
     try:
         os.makedirs(path)
     except FileExistsError:
         pass
-    
+
+
 def __listraw(path):
     return [f for f in __listdir(path) if isRaw(f)]
+
 
 def sort(path, red=False, green=True, blue=False, binX=None, binY=None):
     """Initializes DSLRImage classes for each frame,
     then bins them and stores specified monochrome images to FITS.
     """
     lights = [
-            DSLRImage(f, itype = ImageType.LIGHT)
+            DSLRImage(f, itype=ImageType.LIGHT)
             for f in __listraw(path + "/Light_frames")
             ]
     bias = [
-            DSLRImage(f, itype = ImageType.BIAS)
+            DSLRImage(f, itype=ImageType.BIAS)
             for f in __listraw(path + "/Bias_frames")
             ]
     darks = [
-            DSLRImage(f, itype = ImageType.DARK)
+            DSLRImage(f, itype=ImageType.DARK)
             for f in __listraw(path + "/Dark_frames")
             ]
     flats = [
-            DSLRImage(f, itype = ImageType.FLAT)
+            DSLRImage(f, itype=ImageType.FLAT)
             for f in __listraw(path + "/Flat_fields")
             ]
 
-    images = np.concatenate((lights, bias, darks, flats))
-    
     imagesR = np.empty((0))
     imagesG = np.empty((0))
     imagesB = np.empty((0))
-    
+
     if(red):
         clights = np.array([im.extractChannel(Color.RED) for im in lights])
         cbias = np.array([im.extractChannel(Color.RED) for im in bias])
@@ -71,22 +73,22 @@ def sort(path, red=False, green=True, blue=False, binX=None, binY=None):
         cdarks = np.array([im.extractChannel(Color.BLUE) for im in darks])
         calibrate(clights, cbias, cdarks, cflats)
         imagesB = clights
-    
+
     for im in np.concatenate((imagesR, imagesG, imagesB)):
         im.binImage(binX, binY)
-        
+
     if(red):
         __makedirs(path + "/processedR")
         for im in imagesR:
             im.saveFITS(path + "/processedR/")
-            
+
     if(green):
         __makedirs(path + "/processedG")
         for im in imagesG:
             im.saveFITS(path + "/processedG/")
-            
+
     if(blue):
-        __makedirs(path + "/processedR")
+        __makedirs(path + "/processedB")
         for im in imagesB:
             im.saveFITS(path + "/processedB/")
 
