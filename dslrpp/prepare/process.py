@@ -302,4 +302,3 @@ class Monochrome(DSLRImage):
         self.imdata = bindata
         self._binX *= x
         self._binY *= y
-# test

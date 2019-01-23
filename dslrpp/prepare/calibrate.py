@@ -88,4 +88,3 @@ def calibrate(
         im.imdata -= dark.imdata
         im.imdata -= bias.imdata
         im.imdata //= flat.imdata
-# test
