@@ -50,6 +50,8 @@ def calibrate(
                 )
 
     bias = stack(bias, mode=masterMode)
+    for im in dark:
+        im.imdata -= bias.imdata
     dark = stack(dark, mode=masterMode)  # creating master frames
 #    if fbias == []:
 #        fbias = bias
@@ -71,9 +73,9 @@ def calibrate(
                         + str(fdark.exptime) + " instead of "
                         + str(im.exptime) + ")"
                         )
-            im.imdata = np.subtract(im.imdata, fdark.imdata)
+            im.imdata -= fdark.imdata
         if fbias != []:
-            im.imdata = np.subtract(im.imdata, fbias.imdata)
+            im.imdata -= fbias.imdata
     flat = stack(flat, mode=masterMode)
 
     for im in lights:  # calibrating science frames
@@ -83,7 +85,7 @@ def calibrate(
                     "respective light frames (provided " + str(fdark.exptime)
                     + " instead of " + str(im.exptime) + ")"
                     )
-        im.imdata = np.subtract(im.imdata, dark.imdata)
-        im.imdata = np.subtract(im.imdata, bias.imdata)
-        im.imdata = np.floor_divide(im.imdata, flat.imdata)
+        im.imdata -= dark.imdata
+        im.imdata -= bias.imdata
+        im.imdata //= flat.imdata
 # test
