@@ -17,7 +17,7 @@ def calibrate(
     """
     images = np.concatenate((lights, bias, dark, flat, fbias, fdark))
 
-    print("Calibrating images:", [str(im) for im in images])
+    print("Calibrating images:", [str(im) for im in lights])
 
     dtypes = {type(im) for im in images}
     if dtypes != {Monochrome}:
@@ -49,6 +49,7 @@ def calibrate(
                 "Dark frames must be DARK image type; given:", itypes
                 )
 
+    # print("Before dark:", lights[0].imdata.min(), lights[0].imdata.max())
     bias = stack(bias, mode=masterMode)
     for im in dark:
         im.imdata -= bias.imdata
@@ -77,6 +78,7 @@ def calibrate(
         if fbias != []:
             im.imdata -= fbias.imdata
     flat = stack(flat, mode=masterMode)
+    flat.imdata = flat.imdata.mean()/flat.imdata
 
     for im in lights:  # calibrating science frames
         if im.exptime != dark.exptime:
@@ -86,5 +88,7 @@ def calibrate(
                     + " instead of " + str(im.exptime) + ")"
                     )
         im.imdata -= dark.imdata
+        # print("After dark:", im.imdata.min(), im.imdata.max())
         im.imdata -= bias.imdata
-        im.imdata //= flat.imdata
+        # print("After bias:", im.imdata.min(), im.imdata.max())
+        im.imdata *= flat.imdata
