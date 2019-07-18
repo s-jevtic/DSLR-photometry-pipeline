@@ -27,12 +27,13 @@ def LCT(img1, img2):
 def translate(img, dy, dx):
     res = img.shape
     transimg = (img[dy:] if dy >= 0 else img[:dy])
-    transimg = (transimg[dx:] if dx >= 0 else transimg[:dx])
+    transimg = (transimg[:,dx:] if dx >= 0 else transimg[:,:dx])
     if dy < 0:
         transimg = np.flip(transimg, 0)
     if dx < 0:
         transimg = np.flip(transimg, 1)
-    transimg = np.resize(transimg, res)
+    transimg = np.append(transimg, np.zeros((dy, res[1] - dx)), axis=0)
+    transimg = np.append(transimg, np.zeros((res[0], dx)), axis=1)
     if dy < 0:
         transimg = np.flip(transimg, 0)
     if dx < 0:
