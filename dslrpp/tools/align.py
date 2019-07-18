@@ -1,44 +1,48 @@
 import numpy as np
-# from scipy import signal
 from skimage.feature import register_translation as get_shift
-# from matplotlib import pyplot as plt
 
 
-def LCT(img1, img2):
+def __LCT(img1, img2):
     img1 = img1.astype('float')
     img1 /= img1.mean()
-    # print('norm1')
     img2 = img2.astype('float')
     img2 /= img2.mean()
-    # print('norm2')
-#    corr = signal.correlate2d(img1, img2, mode=corrmode)
-#    plt.imshow(corr)
-#    plt.show()
-#    maxi = np.argmax(abs(corr))
-#    x, y = np.unravel_index(maxi, corr.shape)
-#    y -= (len(img1)//2 - 1)
-#    x -= (len(img1[0])//2 - 1)
-    (y, x), _, _ = get_shift(
-            img1, img2, return_error=False
-            )
-    return y, -x
+    (y, x), _, _ = get_shift(img1, img2)
+    return -y, -x
 
 
-def translate(img, dy, dx):
+def __translate(img, dy, dx):
     res = img.shape
     transimg = (img[dy:] if dy >= 0 else img[:dy])
-    transimg = (transimg[:,dx:] if dx >= 0 else transimg[:,:dx])
+    transimg = (transimg[:, dx:] if dx >= 0 else transimg[:, :dx])
     if dy < 0:
         transimg = np.flip(transimg, 0)
     if dx < 0:
         transimg = np.flip(transimg, 1)
-    transimg = np.append(transimg, np.zeros((dy, res[1] - dx)), axis=0)
-    transimg = np.append(transimg, np.zeros((res[0], dx)), axis=1)
+    transimg = np.append(
+            transimg,
+            np.zeros((np.abs(dy), np.abs(res[1] - np.abs(dx)))),
+            axis=0
+            )
+    transimg = np.append(
+            transimg,
+            np.zeros((np.abs(res[0]), np.abs(dx))),
+            axis=1
+            )
     if dy < 0:
         transimg = np.flip(transimg, 0)
     if dx < 0:
         transimg = np.flip(transimg, 1)
     return transimg
+
+
+def align_imgs(*imgs):
+    im0 = imgs[0]
+    aligned = np.array([im0])
+    for i in imgs:
+        y, x = __LCT(im0, i)
+        np.append(aligned, __translate(i, y, x))
+    return aligned
 
 # cao savo sta radis *upitnik*
 
