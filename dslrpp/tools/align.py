@@ -1,13 +1,13 @@
 import numpy as np
-from skimage.feature import register_translation as get_shift
+from skimage.feature import register_translation
 
 
-def __LCT(img1, img2):
+def __get_shift(img1, img2):
     img1 = img1.astype('float')
     img1 /= img1.mean()
     img2 = img2.astype('float')
     img2 /= img2.mean()
-    (y, x), _, _ = get_shift(img1, img2)
+    (y, x), _, _ = register_translation(img1, img2)
     return -y, -x
 
 
@@ -36,13 +36,23 @@ def __translate(img, dy, dx):
     return transimg
 
 
+def get_offsets(*imgs):
+    im0 = imgs[0]
+    offsets = np.array([[0,0]])
+    for i in imgs:
+        y, x = __get_shift(im0, i)
+        np.append(offsets, [y, x])
+    return offsets
+
+
 def align_imgs(*imgs):
     im0 = imgs[0]
     aligned = np.array([im0])
     for i in imgs:
-        y, x = __LCT(im0, i)
+        y, x = __get_shift(im0, i)
         np.append(aligned, __translate(i, y, x))
     return aligned
+
 
 # cao savo sta radis *upitnik*
 
