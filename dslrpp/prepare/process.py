@@ -304,7 +304,7 @@ class Monochrome(DSLRImage):
         self._binX *= x
         self._binY *= y
 
-    def addStar(self, x, y, mag):
+    def add_star(self, y, x, mag):
         self.stars.append(Star(x, y, mag))
 
 
@@ -316,3 +316,16 @@ class Star:
 
     def isVar(self):
         return self.mag is None
+
+class _debugImage(Monochrome):
+    def __init__(self, imdata):
+        self.imdata = imdata
+        self.exptime = None
+        self.jdate = None
+        self.impath = None
+        self._binX = None
+        self._binY = None
+        self.imtype = ImageType.LIGHT
+        self.imcolor = Color.GREEN
+        self.stars = []
+

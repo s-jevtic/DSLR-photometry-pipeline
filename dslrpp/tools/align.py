@@ -3,7 +3,9 @@ stars (or other celestial objects).
 """
 import numpy as np
 from skimage.feature import register_translation
+from matplotlib import pyplot as plt
 from ..prepare import Monochrome
+from ..prepare.process import _debugImage
 
 
 def __window(imd, center, hh, hw):
@@ -77,16 +79,21 @@ def __get_shift(img1, img2, hh=20, hw=20):
         The width component of the offset
     """
     imd1 = img1.imdata / img1.imdata.mean()
-    imd2 = img1.imdata / img2.imdata.mean()
-    offsets = np.empty(())
+    imd2 = img2.imdata / img2.imdata.mean()
+    offsets = []
     for s in img1.stars:
         if s.isVar():
             pass
         w1 = __window(imd1, (s.y, s.x), hh, hw)
         w2 = __window(imd2, (s.y, s.x), hh, hw)
-        offsets.append(register_translation(w1, w2).shifts)
+        offset = register_translation(w1, w2)[0]
+        offsets.append(offset)
+        fig, (a1, a2) = plt.subplots(ncols=2, figsize=(20, 7))
+        a1.imshow(w1, cmap='gray')
+        a2.imshow(w2, cmap='gray')
+        plt.show()
     (y, x) = np.median(offsets, axis=0)
-    return -y, -x
+    return -int(y), -int(x)
 
 
 def __translate(imd, dy, dx):
@@ -134,7 +141,7 @@ def __translate(imd, dy, dx):
     return transimd
 
 
-def get_offsets(*imgs):
+def get_offsets(*imgs, hh=20, hw=20):
     """Computes the offset between images based on star positions.
 
     Computes the offset between images based on star positions, using
@@ -143,7 +150,8 @@ def get_offsets(*imgs):
     Parameters
     ----------
     *imgs : `numpy.ndarray`\0s
-        The images whose offsets need to be found. The f
+        The images whose offsets need to be found. The first image in the sequence will be used
+        as the reference image and its offset will be (0,0) by default.
 
     Returns
     -------
@@ -151,14 +159,15 @@ def get_offsets(*imgs):
         The array of tuples representing the offset in a (y, x) format.
     """
     im0 = imgs[0]
-    offsets = np.array([[0, 0]])
-    for i in imgs:
-        y, x = __get_shift(im0, i)
-        np.append(offsets, [y, x])
+    offsets = [[0, 0]]
+    for i in range(1, len(imgs)):
+        y, x = __get_shift(im0, imgs[i], hh, hw)
+        offsets.append([y, x])
+        print(offsets)
     return offsets
 
 
-def align_imgs(*imgs):
+def align_imgs(*imgs, hh=20, hw=20):
     """Translates the images in order for star coordinates to match.
 
     Computes the offset between images based on star positions, and translates
@@ -176,13 +185,16 @@ def align_imgs(*imgs):
         The array of translated/aligned images
     """
     im0 = imgs[0]
-    aligned = np.array([im0])
-    offs = get_offsets(imgs)
-    for i in range(len(imgs)):
-        y, x = offs[i]
-        new_imd = __translate(i.imdata, y, x)
-        new_img = Monochrome(new_imd, i, translated=True)
-        np.append(aligned, new_img)
+    aligned = [im0]
+    offs = get_offsets(*imgs)
+    print(offs)
+    for i in range(1, len(imgs)):
+        (y, x) = offs[i]
+        print(type(y), x)
+        new_imd = __translate(imgs[i].imdata, y, x)
+        new_img = Monochrome(new_imd, imgs[i], translated=True)
+        # new_img = _debugImage(new_imd)
+        aligned.append(new_img)
     return aligned
 
 
