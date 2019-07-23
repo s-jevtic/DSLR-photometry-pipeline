@@ -76,12 +76,9 @@ class DSLRImage:
         self._binY = 1
         print("Initialized image class: " + str(self))
 
-    def binImage(self, x, y=None, fn='mean'):
+    def binImage(self, x, y=None):
         """Bins the data from the image. Requires the window width.
         If window height is not specified, the window is assumed to be square.
-        Binning can be performed via arithmetic mean or median, which is
-        specified in the fn argument.
-        The default is arithmetic mean.
         """
         if y is None:
             y = x
@@ -219,7 +216,7 @@ class Monochrome(DSLRImage):
     """
     def __init__(
             self, imdata, origin, color=Color.GREEN,
-            stacked=False
+            stacked=False, translated=False
             ):
         self.exptime = origin.exptime
         self.jdate = origin.jdate
@@ -227,9 +224,13 @@ class Monochrome(DSLRImage):
         self.imtype = origin.imtype
         self._binX = origin._binX
         self._binY = origin._binY
-        self.imcolor = color
+        if type(origin) == Monochrome:
+            self.imcolor = origin.imcolor
+        else:
+            self.imcolor = color
         self._genPath()
         self.imdata = imdata
+        self.stars = []
 
     def saveFITS(self, path, fname=None):
         """Writes the data to a FITS file."""
@@ -302,3 +303,16 @@ class Monochrome(DSLRImage):
         self.imdata = bindata
         self._binX *= x
         self._binY *= y
+
+    def addStar(self, x, y, mag):
+        self.stars.append(Star(x, y, mag))
+
+
+class Star:
+    def __init__(self, x, y, mag=None):
+        self.x = x
+        self.y = y
+        self.mag = mag
+
+    def isVar(self):
+        return self.mag is None
