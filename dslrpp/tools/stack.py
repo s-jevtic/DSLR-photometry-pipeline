@@ -27,9 +27,9 @@ def stack(images, mode='median'):
 
     imdata = np.array([im.imdata for im in images])
 
-    if mode is 'median':
+    if mode == 'median':
         stack = np.median(imdata, axis=0)
-    elif mode is 'mean':
+    elif mode == 'mean':
         stack = np.mean(imdata, axis=0)
     else:
         raise ValueError("Invalid argument for 'mode' parameter")

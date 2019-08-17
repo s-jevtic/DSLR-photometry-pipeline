@@ -150,8 +150,9 @@ def get_offsets(*imgs, hh=20, hw=20):
     Parameters
     ----------
     *imgs : `numpy.ndarray`\0s
-        The images whose offsets need to be found. The first image in the sequence will be used
-        as the reference image and its offset will be (0,0) by default.
+        The images whose offsets need to be found. The first image in the
+        sequence will be used as the reference image and its offset will be
+        (0,0) by default.
 
     Returns
     -------
