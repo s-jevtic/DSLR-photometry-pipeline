@@ -82,7 +82,7 @@ def __get_shift(img1, img2, hh=20, hw=20):
     imd2 = img2.imdata / img2.imdata.mean()
     offsets = []
     for s in img1.stars:
-        if s.isVar():
+        if s.isVar:
             pass
         w1 = __window(imd1, (s.y, s.x), hh, hw)
         w2 = __window(imd2, (s.y, s.x), hh, hw)
@@ -197,6 +197,14 @@ def align_imgs(*imgs, hh=20, hw=20):
         # new_img = _debugImage(new_imd)
         aligned.append(new_img)
     return aligned
+
+
+def align_stars(*imgs, hh=5, hw=5):
+    im0 = imgs[0]
+    offs = get_offsets(*imgs)
+    for i in range(1, len(imgs)):
+        for s in im0.stars:
+            imgs[i].inherit_star(s, offs[i])
 
 
 # cao savo sta radis *upitnik*

@@ -20,7 +20,7 @@ import libraw
 from matplotlib import pyplot as plt
 
 
-w = 5
+w = 30
 
 
 class ImageType(IntEnum):
@@ -316,6 +316,17 @@ class Monochrome(DSLRImage):
         else:
             isVar = True
         self.stars.append(Star(self, x, y, isVar, mag))
+        r = np.mean([s.r for s in self.stars])
+        d_d = np.mean([s.d_d for s in self.stars])
+        d_a = np.mean([s.d_a for s in self.stars])
+        for s in self.stars:
+            s.aperture = CircularAperture((s.x, s.y), r)
+            s.annulus = CircularAnnulus((s.x, s.y), r + d_d, r + d_d + d_a)
+
+    def inherit_star(self, s, shift):
+        self.stars.append(s)
+        s.x -= shift[0]
+        s.y -= shift[1]
 
     def show(self):
         plt.figure(figsize=(20, 15))
@@ -327,18 +338,28 @@ class Monochrome(DSLRImage):
 
 
 class Star:
-    def __init__(self, parent, x, y, isVar, mag=None):
+    def __init__(
+            self, parent, x, y, isVar, mag=None, r=None, d_d=None, d_a=None
+            ):
         self.mag = mag
         self.isVar = isVar
         if(self.isVar):
             self.varMag = dict()
-        gaussian = fit_2dgaussian(parent.imdata[y-w:y+w, x-w:x+w])
-        x += gaussian.x_mean.value - w
-        y += gaussian.y_mean.value - w
-        r = (gaussian.x_stddev + gaussian.y_stddev) * np.sqrt(2 * np.log(2))
-        R = 2*r
+        if r is None:
+            gaussian = fit_2dgaussian(parent.imdata[y-w:y+w, x-w:x+w])
+            x += gaussian.x_mean.value - w
+            y += gaussian.y_mean.value - w
+            r = (gaussian.x_stddev + gaussian.y_stddev) * np.sqrt(2*np.log(2))
+        if d_d is None:
+            d_d = r
+        if d_a is None:
+            d_a = r
+        R = r + d_d
         self.aperture = CircularAperture([x, y], r)
-        self.annulus = CircularAnnulus([x, y], R, R+r)
+        self.annulus = CircularAnnulus([x, y], R, R+d_a)
+        self.r = r
+        self.d_d = d_d
+        self.d_a = d_a
         self.x = int(x)
         self.y = int(y)
 
