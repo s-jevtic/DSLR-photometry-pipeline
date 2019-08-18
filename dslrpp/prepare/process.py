@@ -13,15 +13,14 @@ from astropy.io import fits
 from photutils import CircularAperture, CircularAnnulus
 from photutils.centroids import fit_2dgaussian, GaussianConst2D
 from skimage.measure import block_reduce
-from scipy.signal import peak_widths
 import exifread
 import numpy as np
 from rawkit.raw import Raw
 import libraw
 from matplotlib import pyplot as plt
 
-initialX = 15
-initialY = 36
+
+w = 5
 
 
 class ImageType(IntEnum):
@@ -320,27 +319,28 @@ class Monochrome(DSLRImage):
 
     def show(self):
         plt.figure(figsize=(20, 15))
-        plt.imshow(self.imdata, cmap='gray')
+        ax = plt.axes()
+        ax.imshow(np.log(self.imdata), cmap='gray')
         for s in self.stars:
-            s.drawAperture()
+            s.drawAperture(ax)
+        plt.show()
 
 
 class Star:
     def __init__(self, parent, x, y, isVar, mag=None):
-        self.x = x
-        self.y = y
         self.mag = mag
         self.isVar = isVar
         if(self.isVar):
             self.varMag = dict()
-        gaussian = fit_2dgaussian(parent.imdata[y-5:y+5, x-5:x+5])
-        print(gaussian)
-        x = gaussian.x_mean
-        y = gaussian.y_mean
+        gaussian = fit_2dgaussian(parent.imdata[y-w:y+w, x-w:x+w])
+        x += gaussian.x_mean.value - w
+        y += gaussian.y_mean.value - w
         r = (gaussian.x_stddev + gaussian.y_stddev) * np.sqrt(2 * np.log(2))
         R = 2*r
         self.aperture = CircularAperture([x, y], r)
         self.annulus = CircularAnnulus([x, y], R, R+r)
+        self.x = int(x)
+        self.y = int(y)
 
     def defMag(self, frame, mag):
         if not self.isVar:
@@ -348,9 +348,9 @@ class Star:
                                  'variable stars')
         self.varMag.update(frame=mag)
 
-    def drawAperture(self, ax=None):
-        self.aperture.plot(ax, (self.x, self.y), fc='green', ec='green')
-        self.annulus.plot(ax, (self.x, self.y), fc='red', ec='red')
+    def drawAperture(self, ax):
+        self.aperture.plot(ax, fc='g', ec='g')
+        self.annulus.plot(ax, fc='r', ec='r')
 
     def __str__(self):
         if self.isVar:
