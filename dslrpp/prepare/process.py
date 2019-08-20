@@ -11,7 +11,7 @@ from datetime import datetime
 from astropy.time import Time
 from astropy.io import fits
 from photutils import CircularAperture, CircularAnnulus
-from photutils.centroids import fit_2dgaussian, GaussianConst2D
+from photutils.centroids import fit_2dgaussian  # , GaussianConst2D
 from skimage.measure import block_reduce
 import exifread
 import numpy as np
@@ -21,7 +21,7 @@ from matplotlib import pyplot as plt
 
 
 w = 30
-
+__CurrentFrame = None
 
 class ImageType(IntEnum):
     LIGHT = 0
@@ -311,6 +311,7 @@ class Monochrome(DSLRImage):
         self._binY *= y
 
     def add_star(self, y, x, mag=None):
+        self.make_current()
         if mag is not None:
             isVar = False
         else:
@@ -319,21 +320,41 @@ class Monochrome(DSLRImage):
         r = np.mean([s.r for s in self.stars])
         d_d = np.mean([s.d_d for s in self.stars])
         d_a = np.mean([s.d_a for s in self.stars])
+        print("Added star ({},{})".format(x, y))
         for s in self.stars:
-            s.aperture = CircularAperture((s.x, s.y), r)
-            s.annulus = CircularAnnulus((s.x, s.y), r + d_d, r + d_d + d_a)
+            s.apertures[self] = CircularAperture((s.x[self], s.y[self]), r)
+            s.annuli[self] = CircularAnnulus(
+                    (s.x[self], s.y[self]), r + d_d, r + d_d + d_a
+                    )
+            s.r = r
+            s.d_d = d_d
+            s.d_a = d_a
+            print("\tUpdated aperture radii of star"
+                  "({},{}) to ({}, {}~{})".format(
+                          np.around(s.x[self], decimals=2),
+                          np.around(s.y[self], decimals=2),
+                          np.around(r, decimals=2),
+                          np.around(r + d_d, decimals=2),
+                          np.around(r + d_d + d_a, decimals=2)
+                          )
+                  )
 
     def inherit_star(self, s, shift):
+        self.make_current()
         self.stars.append(s)
-        s.x -= shift[0]
-        s.y -= shift[1]
+        s.updateCoords(self, s.get_x() + shift[1], s.get_y() + shift[0])
+
+    def make_current(self):
+        global __CurrentFrame
+        __CurrentFrame = self
 
     def show(self):
+        self.make_current()
         plt.figure(figsize=(20, 15))
         ax = plt.axes()
         ax.imshow(np.log(self.imdata), cmap='gray')
         for s in self.stars:
-            s.drawAperture(ax)
+            s.drawAperture(self, ax)
         plt.show()
 
 
@@ -341,10 +362,16 @@ class Star:
     def __init__(
             self, parent, x, y, isVar, mag=None, r=None, d_d=None, d_a=None
             ):
+        global __CurrentFrame
+        __CurrentFrame = parent
         self.mag = mag
         self.isVar = isVar
         if(self.isVar):
             self.varMag = dict()
+        self.apertures = dict()
+        self.annuli = dict()
+        self.x = dict()
+        self.y = dict()
         if r is None:
             gaussian = fit_2dgaussian(parent.imdata[y-w:y+w, x-w:x+w])
             x += gaussian.x_mean.value - w
@@ -355,33 +382,54 @@ class Star:
         if d_a is None:
             d_a = r
         R = r + d_d
-        self.aperture = CircularAperture([x, y], r)
-        self.annulus = CircularAnnulus([x, y], R, R+d_a)
+        self.apertures[parent] = CircularAperture([x, y], r)
+        self.annuli[parent] = CircularAnnulus([x, y], R, R+d_a)
         self.r = r
         self.d_d = d_d
         self.d_a = d_a
-        self.x = int(x)
-        self.y = int(y)
+        self.x[parent] = x
+        self.y[parent] = y
+
+    def get_x(self):
+        global __CurrentFrame
+        return self.x[__CurrentFrame]
+
+    def get_y(self):
+        global __CurrentFrame
+        return self.y[__CurrentFrame]
+
+    def updateCoords(self, frame, x, y):
+        self.apertures[frame] = CircularAperture([x, y], self.r)
+        self.annuli[frame] = CircularAnnulus(
+                [x, y], self.r+self.d_d, self.r+self.d_d+self.d_a
+                )
+        self.x[frame] = x
+        self.y[frame] = y
 
     def defMag(self, frame, mag):
         if not self.isVar:
             raise AttributeError('Variable magnitude can only be defined on'
                                  'variable stars')
-        self.varMag.update(frame=mag)
+        self.varMag[frame] = mag
 
-    def drawAperture(self, ax):
-        self.aperture.plot(ax, fc='g', ec='g')
-        self.annulus.plot(ax, fc='r', ec='r')
+    def drawAperture(self, frame, ax):
+        self.apertures[frame].plot(ax, fc='g', ec='g')
+        self.annuli[frame].plot(ax, fc='r', ec='r')
 
     def __str__(self):
         if self.isVar:
             s = "Variable star\n"
         else:
             s = "Fixed-magnitude star\n"
-        s += "Centroid: ({}, {})\n".format(self.x, self.y)
-        s += "Aperture radius: " + str(self.aperture.r) + "\n"
-        s += "Annulus radii: {}~{}".format(
-                self.annulus.r_in, self.annulus.r_out)
+        s += "Centroid: ({}, {})\n".format(
+                int(np.around(self.get_x())),
+                int(np.around(self.get_y()))
+                )
+        s += "Aperture radius: " + str(np.around(self.r, decimals=2)) + "\n"
+        s += "Annulus radii: {}~{}\n".format(
+                np.around(self.r+self.d_d, decimals=2),
+                np.around(self.r+self.d_d+self.d_a, decimals=2)
+                )
         return s
 
 

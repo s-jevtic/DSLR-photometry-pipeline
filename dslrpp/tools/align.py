@@ -35,21 +35,21 @@ def __window(imd, center, hh, hw):
     if center[0] - hh < 0:
         y1 = 0
     else:
-        y1 = center[0] - hh
+        y1 = int(center[0]) - hh
     if center[0] + hh > H:
         y2 = H
     else:
-        y2 = center[0] + hh
+        y2 = int(center[0]) + hh
 
-    if center[1] - hw < 0:
+    if int(center[1]) - hw < 0:
         x1 = 0
     else:
-        x1 = center[1] - hw
+        x1 = int(center[1]) - hw
 
-    if center[1] + hw > W:
+    if int(center[1]) + hw > W:
         x2 = W
     else:
-        x2 = center[1] + hw
+        x2 = int(center[1]) + hw
     return imd[y1:y2, x1:x2]
 
 
@@ -84,14 +84,14 @@ def __get_shift(img1, img2, hh=20, hw=20):
     for s in img1.stars:
         if s.isVar:
             pass
-        w1 = __window(imd1, (s.y, s.x), hh, hw)
-        w2 = __window(imd2, (s.y, s.x), hh, hw)
+        w1 = __window(imd1, (s.y[img1], s.x[img1]), hh, hw)
+        w2 = __window(imd2, (s.y[img1], s.x[img1]), hh, hw)
         offset = register_translation(w1, w2)[0]
         offsets.append(offset)
-        fig, (a1, a2) = plt.subplots(ncols=2, figsize=(20, 7))
-        a1.imshow(w1, cmap='gray')
-        a2.imshow(w2, cmap='gray')
-        plt.show()
+        #fig, (a1, a2) = plt.subplots(ncols=2, figsize=(20, 7))
+        #a1.imshow(w1, cmap='gray')
+        #a2.imshow(w2, cmap='gray')
+        #plt.show()
     (y, x) = np.median(offsets, axis=0)
     return -int(y), -int(x)
 
@@ -164,7 +164,7 @@ def get_offsets(*imgs, hh=20, hw=20):
     for i in range(1, len(imgs)):
         y, x = __get_shift(im0, imgs[i], hh, hw)
         offsets.append([y, x])
-        print(offsets)
+        #print(offsets)
     return offsets
 
 
