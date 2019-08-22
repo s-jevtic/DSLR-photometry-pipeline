@@ -20,8 +20,11 @@ import libraw
 from matplotlib import pyplot as plt
 
 
-w = 30
-__CurrentFrame = None
+w = 5
+# polusirina prozora
+# jos uvek ne znamo koja vrednost bi morala da bude
+CurrentFrame = None
+
 
 class ImageType(IntEnum):
     LIGHT = 0
@@ -34,6 +37,10 @@ class Color(IntEnum):
     RED = 0
     GREEN = 1
     BLUE = 2
+
+
+def get_current_frame():
+    return CurrentFrame
 
 
 def demosaic(im):
@@ -311,16 +318,18 @@ class Monochrome(DSLRImage):
         self._binY *= y
 
     def add_star(self, y, x, mag=None):
+        print("Adding star ({},{})".format(x, y))
         self.make_current()
         if mag is not None:
             isVar = False
         else:
             isVar = True
-        self.stars.append(Star(self, x, y, isVar, mag))
+        st = Star(self, x, y, isVar, mag)
+        self.stars.append(st)
         r = np.mean([s.r for s in self.stars])
         d_d = np.mean([s.d_d for s in self.stars])
         d_a = np.mean([s.d_a for s in self.stars])
-        print("Added star ({},{})".format(x, y))
+        print("Added star", st)
         for s in self.stars:
             s.apertures[self] = CircularAperture((s.x[self], s.y[self]), r)
             s.annuli[self] = CircularAnnulus(
@@ -340,13 +349,24 @@ class Monochrome(DSLRImage):
                   )
 
     def inherit_star(self, s, shift):
-        self.make_current()
-        self.stars.append(s)
-        s.updateCoords(self, s.get_x() + shift[1], s.get_y() + shift[0])
+        hasStar = False
+        print("Inheriting star:", s)
+        for _s in self.stars:
+            if s.name == _s.name:
+                s = _s
+                hasStar = True
+                break
+        if not hasStar:
+            self.stars.append(s)
+        print("Inherited star:", s)
+        try:
+            s.updateCoords(self, s.get_x() + shift[1], s.get_y() + shift[0])
+        except KeyError:
+            print(s.x, s.y)
 
     def make_current(self):
-        global __CurrentFrame
-        __CurrentFrame = self
+        global CurrentFrame
+        CurrentFrame = self
 
     def show(self):
         self.make_current()
@@ -360,10 +380,19 @@ class Monochrome(DSLRImage):
 
 class Star:
     def __init__(
-            self, parent, x, y, isVar, mag=None, r=None, d_d=None, d_a=None
+            self, parent, x, y, isVar, mag=None, r=None, d_d=None,
+            d_a=None, name=None
             ):
-        global __CurrentFrame
-        __CurrentFrame = parent
+        parent.make_current()
+        cls = type(self)
+        if hasattr(cls, 'n'):
+            cls.n += 1
+        else:
+            cls.n = 1
+        if name is not None:
+            self.name = name
+        else:
+            self.name = 'Star_' + str(cls.n)
         self.mag = mag
         self.isVar = isVar
         if(self.isVar):
@@ -376,7 +405,11 @@ class Star:
             gaussian = fit_2dgaussian(parent.imdata[y-w:y+w, x-w:x+w])
             x += gaussian.x_mean.value - w
             y += gaussian.y_mean.value - w
-            r = (gaussian.x_stddev + gaussian.y_stddev) * np.sqrt(2*np.log(2))
+            r = 2 * np.sqrt(
+                            gaussian.x_stddev + gaussian.y_stddev
+                            )*(
+                            np.sqrt(2*np.log(2))
+                            )
         if d_d is None:
             d_d = r
         if d_a is None:
@@ -389,14 +422,13 @@ class Star:
         self.d_a = d_a
         self.x[parent] = x
         self.y[parent] = y
+        print("Created star", self, "in frame", parent)
 
     def get_x(self):
-        global __CurrentFrame
-        return self.x[__CurrentFrame]
+        return self.x[get_current_frame()]
 
     def get_y(self):
-        global __CurrentFrame
-        return self.y[__CurrentFrame]
+        return self.y[get_current_frame()]
 
     def updateCoords(self, frame, x, y):
         self.apertures[frame] = CircularAperture([x, y], self.r)
@@ -416,15 +448,32 @@ class Star:
         self.apertures[frame].plot(ax, fc='g', ec='g')
         self.annuli[frame].plot(ax, fc='r', ec='r')
 
+    def FWHM(self, frame):
+        x = int(self.x[frame])
+        y = int(self.y[frame])
+        gaussian = fit_2dgaussian(frame.imdata[y-w:y+w, x-w:x+w])
+        r = 2 * np.sqrt(gaussian.x_stddev + gaussian.y_stddev
+                        )*(
+                                np.sqrt(2*np.log(2))
+                        )
+        return r
+
     def __str__(self):
         if self.isVar:
-            s = "Variable star\n"
+            s = "Variable star: "
         else:
-            s = "Fixed-magnitude star\n"
-        s += "Centroid: ({}, {})\n".format(
-                int(np.around(self.get_x())),
-                int(np.around(self.get_y()))
-                )
+            s = "Fixed-magnitude star: "
+        if hasattr(self, 'name'):
+            s += self.name + '\n'
+        else:
+            s += "(no name)\n"
+        try:
+            s += "Centroid: ({}, {})\n".format(
+                    int(np.around(self.get_x())),
+                    int(np.around(self.get_y()))
+                    )
+        except KeyError:
+            s += "Centroid unknown\n"
         s += "Aperture radius: " + str(np.around(self.r, decimals=2)) + "\n"
         s += "Annulus radii: {}~{}\n".format(
                 np.around(self.r+self.d_d, decimals=2),

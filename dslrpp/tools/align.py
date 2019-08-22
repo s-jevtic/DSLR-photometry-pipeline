@@ -82,17 +82,18 @@ def __get_shift(img1, img2, hh=20, hw=20):
     imd2 = img2.imdata / img2.imdata.mean()
     offsets = []
     for s in img1.stars:
-        if s.isVar:
-            pass
         w1 = __window(imd1, (s.y[img1], s.x[img1]), hh, hw)
         w2 = __window(imd2, (s.y[img1], s.x[img1]), hh, hw)
         offset = register_translation(w1, w2)[0]
         offsets.append(offset)
-        #fig, (a1, a2) = plt.subplots(ncols=2, figsize=(20, 7))
-        #a1.imshow(w1, cmap='gray')
-        #a2.imshow(w2, cmap='gray')
-        #plt.show()
-    (y, x) = np.median(offsets, axis=0)
+        print("{}:{}".format(s.x[img1] - hw, s.x[img1] + hw))
+#        fig, (a1, a2) = plt.subplots(ncols=2, figsize=(20, 7))
+#        a1.imshow(w1, cmap='gray')
+#        a2.imshow(w2, cmap='gray')
+#        plt.show()
+#        input()
+    print(offsets)
+    y, x = np.median(offsets, axis=0)
     return -int(y), -int(x)
 
 
@@ -151,19 +152,21 @@ def get_offsets(*imgs, hh=20, hw=20):
     ----------
     *imgs : `numpy.ndarray`\0s
         The images whose offsets need to be found. The first image in the
-        sequence will be used as the reference image and its offset will be
-        (0,0) by default.
+        sequence will have the offset (0,0) by default.
 
     Returns
     -------
     aligned : `numpy.ndarray`
         The array of tuples representing the offset in a (y, x) format.
     """
-    im0 = imgs[0]
-    offsets = [[0, 0]]
+    offsets = np.array([[0, 0]])
     for i in range(1, len(imgs)):
-        y, x = __get_shift(im0, imgs[i], hh, hw)
-        offsets.append([y, x])
+        y, x = __get_shift(imgs[i-1], imgs[i], hh, hw)
+        for s in imgs[i-1].stars:
+            imgs[i].inherit_star(s, [y, x])
+        imgs[i].make_current()
+        offsets = np.concatenate((offsets, [[y, x]]), axis=0)
+        offsets[i] += offsets[i-1]
         #print(offsets)
     return offsets
 
@@ -197,14 +200,6 @@ def align_imgs(*imgs, hh=20, hw=20):
         # new_img = _debugImage(new_imd)
         aligned.append(new_img)
     return aligned
-
-
-def align_stars(*imgs, hh=5, hw=5):
-    im0 = imgs[0]
-    offs = get_offsets(*imgs)
-    for i in range(1, len(imgs)):
-        for s in im0.stars:
-            imgs[i].inherit_star(s, offs[i])
 
 
 # cao savo sta radis *upitnik*
