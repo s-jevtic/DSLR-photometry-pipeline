@@ -82,6 +82,8 @@ def __get_shift(img1, img2, hh=20, hw=20):
     imd2 = img2.imdata / img2.imdata.mean()
     offsets = []
     for s in img1.stars:
+        if s.isVar:
+            pass
         w1 = __window(imd1, (s.y[img1], s.x[img1]), hh, hw)
         w2 = __window(imd2, (s.y[img1], s.x[img1]), hh, hw)
         offset = register_translation(w1, w2)[0]
@@ -91,7 +93,6 @@ def __get_shift(img1, img2, hh=20, hw=20):
 #        a1.imshow(w1, cmap='gray')
 #        a2.imshow(w2, cmap='gray')
 #        plt.show()
-#        input()
     print(offsets)
     y, x = np.median(offsets, axis=0)
     return -int(y), -int(x)
@@ -142,7 +143,7 @@ def __translate(imd, dy, dx):
     return transimd
 
 
-def get_offsets(*imgs, hh=20, hw=20):
+def get_offsets(*imgs, hh=20, hw=20, gauss=False, global_offset=False):
     """Computes the offset between images based on star positions.
 
     Computes the offset between images based on star positions, using
@@ -163,10 +164,16 @@ def get_offsets(*imgs, hh=20, hw=20):
     for i in range(1, len(imgs)):
         y, x = __get_shift(imgs[i-1], imgs[i], hh, hw)
         for s in imgs[i-1].stars:
-            imgs[i].inherit_star(s, [y, x])
+            if global_offset:
+                imgs[i].inherit_star(s, imgs[i-1], [y, x], gauss=gauss)
+            else:
+                imgs[i].inherit_star(s, imgs[i-1], gauss=gauss)
         imgs[i].make_current()
         offsets = np.concatenate((offsets, [[y, x]]), axis=0)
+        print('diff offset:', offsets[i], '/', offsets[i-1])
         offsets[i] += offsets[i-1]
+        print('full offset:', offsets[i], '/', offsets[i-1])
+        print("{}/{}".format(i, len(offsets) - 1))
         #print(offsets)
     return offsets
 

@@ -12,6 +12,7 @@ from astropy.time import Time
 from astropy.io import fits
 from photutils import CircularAperture, CircularAnnulus
 from photutils.centroids import fit_2dgaussian  # , GaussianConst2D
+from skimage.feature import register_translation
 from skimage.measure import block_reduce
 import exifread
 import numpy as np
@@ -317,14 +318,14 @@ class Monochrome(DSLRImage):
         self._binX *= x
         self._binY *= y
 
-    def add_star(self, y, x, mag=None):
+    def add_star(self, y, x, mag=None, name=None):
         print("Adding star ({},{})".format(x, y))
         self.make_current()
         if mag is not None:
             isVar = False
         else:
             isVar = True
-        st = Star(self, x, y, isVar, mag)
+        st = Star(self, x, y, isVar, mag=mag, name=name)
         self.stars.append(st)
         r = np.mean([s.r for s in self.stars])
         d_d = np.mean([s.d_d for s in self.stars])
@@ -348,7 +349,7 @@ class Monochrome(DSLRImage):
                           )
                   )
 
-    def inherit_star(self, s, shift):
+    def inherit_star(self, s, parent, shift=None, gauss=False, hh=20, hw=20):
         hasStar = False
         print("Inheriting star:", s)
         for _s in self.stars:
@@ -358,11 +359,17 @@ class Monochrome(DSLRImage):
                 break
         if not hasStar:
             self.stars.append(s)
+        if shift == None:
+            x = int(s.get_x())
+            y = int(s.get_y())
+            w1 = parent.imdata[y-hh:y+hh, x-hw:x+hw]
+            w2 = self.imdata[y-hh:y+hh, x-hw:x+hw]
+            shift = -register_translation(w1, w2)[0]
+            print("Local offset for star", s, ":", shift)
+        s.updateCoords(
+                self, s.get_x() + shift[1], s.get_y() + shift[0], gauss=gauss
+                )
         print("Inherited star:", s)
-        try:
-            s.updateCoords(self, s.get_x() + shift[1], s.get_y() + shift[0])
-        except KeyError:
-            print(s.x, s.y)
 
     def make_current(self):
         global CurrentFrame
@@ -430,7 +437,24 @@ class Star:
     def get_y(self):
         return self.y[get_current_frame()]
 
-    def updateCoords(self, frame, x, y):
+    def updateCoords(self, frame, x, y, gauss=False):
+        x = int(x)
+        y = int(y)
+        if gauss:
+            try:
+#                plt.figure()
+#                plt.imshow(frame.imdata[y-2*w:y+2*w, x-2*w:x+2*w], cmap='gray')
+#                plt.title('Gaussian fitting space')
+#                plt.show()
+                gaussian = fit_2dgaussian(frame.imdata[y-w:y+w, x-w:x+w])
+                x += gaussian.x_mean.value - w
+                y += gaussian.y_mean.value - w
+            except ValueError:
+                print(
+                        '({}, {}: [{}:{}, {}:{}]'.format(
+                            self.x[frame], self.y[frame], y-w, y+w, x-w, x+w
+                        )
+                      )
         self.apertures[frame] = CircularAperture([x, y], self.r)
         self.annuli[frame] = CircularAnnulus(
                 [x, y], self.r+self.d_d, self.r+self.d_d+self.d_a
@@ -457,6 +481,14 @@ class Star:
                                 np.sqrt(2*np.log(2))
                         )
         return r
+
+    def centroid(self, frame):
+        x = int(self.x[frame])
+        y = int(self.y[frame])
+        gaussian = fit_2dgaussian(frame.imdata[y-w:y+w, x-w:x+w])
+        x += gaussian.x_mean.value - w
+        y += gaussian.y_mean.value - w
+        return x, y
 
     def __str__(self):
         if self.isVar:
