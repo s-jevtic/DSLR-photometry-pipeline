@@ -26,7 +26,7 @@ for n in range(1, 37):
                         fits.open(
                                 "E:/ltbu/!AST/projekat #1 - DSLR/stackg/"
                                 "Group{}.fit".format(n)
-                                )[0].data
+                                )[0]
                         )
                     )
     except FileNotFoundError:
@@ -98,7 +98,11 @@ fluxes = instrumental_flux(*imgs)
 mags = -2.5 * np.log10(fluxes)  # pretvaramo fluks u magnitudu
 _, magv, dmag = np.loadtxt(
         "../merenja.txt", delimiter=',', unpack=True
-        )[:, :N_IMGS]  # merenja iz MaxIm DL
+        )[:, :N_IMGS - 1]  # merenja iz MaxIm DL, -1 zbog onog snimka koji fali
+print(magv)
+magv = np.insert(magv, 12, np.nan)
+print(magv)
+dmag = np.insert(dmag, 12, np.nan)
 ideal_lc = mags[:, 1:].mean(axis=1)  # usrednjavamo krive sjaja ref zvezda
 for m in mags.T:
     m -= ideal_lc  # tu krivu oduzimamo od svih
@@ -106,20 +110,20 @@ ref_mag = np.mean([s.mag for s in imgs[0].stars[1:]])
 mags += ref_mag  # dodamo im srednju vrednost "kataloskih" magnituda
 f = plt.figure()
 errors = np.array([1.0857/np.sqrt(snrs[:, i]) for i in range(N_STARS)])
+times = [i.jdate for i in imgs]
+times -= np.min(times)
 # prema literaturi
 #error_u = -2.5 * np.log10(fluxes[:, 0] + error) - mags[:, 0]
 #error_l = -2.5 * np.log10(fluxes[:, 0] - error) - mags[:, 0]
 plt.title('Fotometrija')
-plt.errorbar(range(N_IMGS), magv, yerr=dmag, label='MaxIm DL', capsize=2)
+plt.errorbar(times, magv, yerr=dmag, label='MaxIm DL', capsize=2)
 for i in range(1, N_STARS):
     plt.errorbar(
-            range(N_IMGS), mags[:, i],
-            yerr=errors[i],
-            label=imgs[0].stars[i].name,
-            capsize=2
+            times, mags[:, i], yerr=errors[i],
+            label=imgs[0].stars[i].name, capsize=2
             )
 plt.errorbar(
-        range(N_IMGS), mags[:, 0], yerr=errors[0], label=imgs[0].stars[0].name,
+        times, mags[:, 0], yerr=errors[0], label=imgs[0].stars[0].name,
         capsize=2
         )
 plt.legend()

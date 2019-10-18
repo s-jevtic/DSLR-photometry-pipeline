@@ -252,9 +252,8 @@ class Monochrome(DSLRImage):
         hdu = fits.PrimaryHDU(self.imdata.astype('uint16'))
         print("Writing image " + str(self) + " to file: " + impath + ".fits")
         hdu.header['EXPTIME'] = self.exptime
-        d = Time(self.jdate, format='jd', scale='utc').iso.split()
-        hdu.header['DATE-OBS'] = d[0]
-        hdu.header['TIME-OBS'] = d[1]
+        d = Time(self.jdate, format='jd', scale='utc').isot
+        hdu.header['DATE-OBS'] = d
         hdu.header['IMAGETYP'] = self.imtype.name
         hdu.header['XBINNING'] = self._binX
         hdu.header['YBINNING'] = self._binY
@@ -359,7 +358,7 @@ class Monochrome(DSLRImage):
                 break
         if not hasStar:
             self.stars.append(s)
-        if shift == None:
+        if shift is None:
             x = int(s.get_x())
             y = int(s.get_y())
             w1 = parent.imdata[y-hh:y+hh, x-hw:x+hw]
@@ -515,13 +514,25 @@ class Star:
 
 
 class _debugImage(Monochrome):
-    def __init__(self, imdata):
-        self.imdata = imdata
-        self.exptime = None
-        self.jdate = None
+    def __init__(self, im):
+        if type(im) is np.ndarray:
+            self.imdata = im
+            self.exptime = None
+            self.jdate = None
+            self._binX = None
+            self._binY = None
+        else:
+            self.imdata = im.data
+            self.exptime = im.header['EXPTIME']
+            dt = im.header['DATE-OBS']
+            self.jdate = Time(dt, format='isot', scale='utc').jd
+            try:
+                self._binX = im.header['XBINNING']
+                self._binY = im.header['YBINNING']
+            except KeyError:
+                self._binX = None
+                self._binY = None
         self.impath = None
-        self._binX = None
-        self._binY = None
         self.imtype = ImageType.LIGHT
         self.imcolor = Color.GREEN
         self.stars = []

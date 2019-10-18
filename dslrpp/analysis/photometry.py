@@ -4,6 +4,7 @@
 from photutils import aperture_photometry
 from astropy.stats import sigma_clipped_stats
 import numpy as np
+from matplotlib import pyplot as plt
 
 
 def SNR(*imgs):
@@ -98,3 +99,41 @@ def instrumental_flux(*imgs, subtract_bkg=True,
             fluxes.append(_fluxes)
         return np.array(fluxes)
     raise ValueError("The 'method' argument must be 'mean' or 'median'")
+
+
+def lightcurve(
+        *imgs, return_error=True, include_refstars=False,
+        plot=True, jd_time=True
+               ):
+    n_stars = len(imgs[0].stars)
+    if return_error:
+        snrs = SNR(*imgs)
+    fluxes = instrumental_flux(*imgs)
+    mags = -2.5 * np.log10(fluxes)
+    ideal_lc = mags[:, 1:].mean(axis=1)  # usrednjavamo krive sjaja ref zvezda
+    for m in mags.T:
+        m -= ideal_lc  # tu krivu oduzimamo od svih
+    ref_mag = np.mean([s.mag for s in imgs[0].stars[1:]])
+    mags += ref_mag
+    if return_error:
+        errors = np.array([1.0857/np.sqrt(snrs[:, i]) for i in range(n_stars)])
+    times = imgs[:].jdate
+    if not jd_time:
+        times -= times.min()
+    plt.figure()
+    plt.title('Photometry')
+    if include_refstars:
+        for i in range(1, n_stars):
+            plt.errorbar(
+                    times, mags[:, i], yerr=errors[i],
+                    label=imgs[0].stars[i].name, capsize=2
+                    )
+    plt.errorbar(
+        times, mags[:, 0], yerr=errors[0], label=imgs[0].stars[0].name,
+        capsize=2
+        )
+    if return_error:
+        if include_refstars:
+            return mags.T, errors
+        return mags[:, 0], errors[0]
+    return mags[:, 0]
