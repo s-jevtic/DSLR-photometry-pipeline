@@ -3,7 +3,6 @@ Does the entire photometry process, from DSLR image processing to photometry
 to period analysis.
 """
 import sys
-import numpy as np
 from dslrpp import sort, get_offsets, lightcurve
 from dslrpp.analysis import save_lcData, periodogram, est_period
 from dslrpp.analysis.period import save_pgData
@@ -139,10 +138,10 @@ if len(sys.argv) >= 9:
 imagesR, imagesG, imagesB = *sort(PATH, red, green, blue, binX, binY)
 
 if imagesR.size != 0:
-    imagesR[0].add_star(var_coords, name="Var")
+    imagesR[0].add_star(*var_coords, name="Var")
     for i in range(N_STARS-1):
         imagesR[0].add_star(
-                ref_coords[i], ref_mags[i], name="Ref{}".format(i+1)
+                *ref_coords[i], ref_mags[i], name="Ref{}".format(i+1)
                 )
     get_offsets(imagesR, global_offset=False, gauss=True)
     times, mags, errs = lightcurve(imagesR)
@@ -152,10 +151,10 @@ if imagesR.size != 0:
     est_period(pRange, power, n_estimates=2)
 
 if imagesG.size != 0:
-    imagesG[0].add_star(var_coords, name="Var")
+    imagesG[0].add_star(*var_coords, name="Var")
     for i in range(N_STARS-1):
         imagesG[0].add_star(
-                ref_coords[i], ref_mags[i], name="Ref{}".format(i+1)
+                *ref_coords[i], ref_mags[i], name="Ref{}".format(i+1)
                 )
     get_offsets(imagesG, global_offset=False, gauss=True)
     times, mags, errs = lightcurve(imagesG)
@@ -165,10 +164,10 @@ if imagesG.size != 0:
     est_period(pRange, power, n_estimates=2)
 
 if imagesB.size != 0:
-    imagesB[0].add_star(var_coords, name="Var")
+    imagesB[0].add_star(*var_coords, name="Var")
     for i in range(N_STARS-1):
         imagesR[0].add_star(
-                ref_coords[i], ref_mags[i], name="Ref{}".format(i+1)
+                *ref_coords[i], ref_mags[i], name="Ref{}".format(i+1)
                 )
     get_offsets(imagesB, global_offset=False, gauss=True)
     times, mags, errs = lightcurve(imagesB)
