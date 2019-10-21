@@ -3,9 +3,9 @@ stars (or other celestial objects).
 """
 import numpy as np
 from skimage.feature import register_translation
-from matplotlib import pyplot as plt
 from ..prepare import Monochrome
-from ..prepare.process import _debugImage
+
+__all__ = ["get_offsets"]
 
 
 def __window(imd, center, hh, hw):
@@ -174,7 +174,6 @@ def get_offsets(*imgs, hh=20, hw=20, gauss=False, global_offset=False):
         offsets[i] += offsets[i-1]
         print('full offset:', offsets[i], '/', offsets[i-1])
         print("{}/{}".format(i, len(offsets) - 1))
-        #print(offsets)
     return offsets
 
 
@@ -204,12 +203,5 @@ def align_imgs(*imgs, hh=20, hw=20):
         print(type(y), x)
         new_imd = __translate(imgs[i].imdata, y, x)
         new_img = Monochrome(new_imd, imgs[i], translated=True)
-        # new_img = _debugImage(new_imd)
         aligned.append(new_img)
     return aligned
-
-
-# cao savo sta radis *upitnik*
-
-# sajuz nerushimny respublik svobodnih splatila naveky velikaya rus
-# da zdravstvuet sozdami voley narodov edini moguchy sovyetsky sayuz

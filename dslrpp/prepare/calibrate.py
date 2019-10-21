@@ -4,6 +4,8 @@ import numpy as np
 from ..tools.stack import stack
 from .process import ImageType, Monochrome
 
+__all__ = ["calibrate"]
+
 
 def calibrate(
         lights, bias, dark, flat, fbias=[], fdark=[], masterMode='median'

@@ -6,6 +6,8 @@ from astropy.stats import sigma_clipped_stats
 import numpy as np
 from matplotlib import pyplot as plt
 
+__all__ = ["SNR", "instrumental_flux", "lightcurve", "save_lcData"]
+
 
 def SNR(*imgs):
     stars = []
@@ -122,6 +124,8 @@ def lightcurve(
         times -= times.min()
     plt.figure()
     plt.title('Photometry')
+    plt.xlabel('mag')
+    plt.ylabel('t')
     if include_refstars:
         for i in range(1, n_stars):
             plt.errorbar(
@@ -134,6 +138,35 @@ def lightcurve(
         )
     if return_error:
         if include_refstars:
-            return mags.T, errors
-        return mags[:, 0], errors[0]
-    return mags[:, 0]
+            return times, mags.T, errors
+        return times, mags[:, 0], errors[0]
+    return times, mags[:, 0]
+
+
+def save_lcData(path, t, m, e=None, desc="\b"):
+    print("Saving lightcurve data...")
+    n = 1
+    if e is not None:
+        data = np.transpose([t, m, e])
+    else:
+        data = np.transpose([t, m])
+    try:
+        np.savetxt(
+                path + "/lightcurve_data_{}.csv".format(desc), data,
+                delimiter=','
+                )
+    except(OSError):
+        error = True
+        while error is True:
+            try:
+                np.savetxt(
+                        path + "/lightcurve_data_{}_{}.csv".format(desc, n),
+                        data, delimiter=','
+                        )
+                error = False
+            except OSError:
+                n += 1
+        print(
+                "File of the same name already exists, file written to",
+                path + "/lightcurve_data_{}_{}.csv".format(desc, n)
+                )

@@ -20,6 +20,7 @@ from rawkit.raw import Raw
 import libraw
 from matplotlib import pyplot as plt
 
+__all__ = ["ImageType", "Color", "DSLRImage", "Monochrome", "Star"]
 
 w = 5
 # polusirina prozora
@@ -40,11 +41,11 @@ class Color(IntEnum):
     BLUE = 2
 
 
-def get_current_frame():
+def _get_current_frame():
     return CurrentFrame
 
 
-def demosaic(im):
+def _demosaic(im):
     """Demosaics the image,
     i.e. turns a RGGB monochrome array into a RGB array.
     """
@@ -184,7 +185,7 @@ class DSLRImage:
         # reads the metadata from the RAW file
         print("Reading file: " + impath)
         with Raw(impath) as img:
-            idata = demosaic(img.raw_image())
+            idata = _demosaic(img.raw_image())
         with open(impath, 'rb') as f:
             tags = exifread.process_file(f)
             exptime = float(
@@ -431,10 +432,10 @@ class Star:
         print("Created star", self, "in frame", parent)
 
     def get_x(self):
-        return self.x[get_current_frame()]
+        return self.x[_get_current_frame()]
 
     def get_y(self):
-        return self.y[get_current_frame()]
+        return self.y[_get_current_frame()]
 
     def updateCoords(self, frame, x, y, gauss=False):
         x = int(x)

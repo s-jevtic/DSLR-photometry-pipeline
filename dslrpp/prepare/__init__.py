@@ -1,7 +1,8 @@
-from .process import DSLRImage, Monochrome, ImageType, Color
+from .process import DSLRImage, Monochrome, ImageType, Color, Star
 from .sort import sort
 from .calibrate import calibrate
 
 __all__ = [
-        'DSLRImage', 'Monochrome', 'sort', 'calibrate', 'ImageType', 'Color'
+        "DSLRImage", "Monochrome", "Star", "sort", "calibrate", "ImageType",
+        "Color"
         ]
