@@ -19,22 +19,22 @@ imgs = []
 #                                "split/G/IMG_7{}-G.fit".format(n))[0].data
 #                                )
 #                        )
-for n in range(1, 37):
+for n in range(1, 77):
     try:
-        imgs.append(
-                _debugImage(
+        im = _debugImage(
                         fits.open(
                                 "E:/ltbu/!AST/projekat #1 - DSLR/stackg/"
                                 "Group{}.fit".format(n)
                                 )[0]
                         )
-                    )
+        if im.imdata.max() > 10**4:
+            imgs.append(im)
     except FileNotFoundError:
         pass
 imgs[0].add_star(683, 784, name='V2455 Cyg')
 imgs[0].add_star(511, 999, mag=8.86, name='HD 204569')
 imgs[0].add_star(697, 792, mag=9.54, name='BD+46 3328')
-imgs[0].add_star(398, 609, mag=8.76, name='HD 204341')
+#imgs[0].add_star(398, 609, mag=8.76, name='HD 204341')
 
 N_IMGS = len(imgs)
 N_STARS = len(imgs[0].stars)
@@ -50,27 +50,29 @@ N_STARS = len(imgs[0].stars)
 #                    )
 #s_imgs[0].add_star(683, 784)
 #s_imgs[0].add_star(511, 999, mag=np.nan)
-print(get_offsets(*imgs, global_offset=False, gauss=True))
+offs = get_offsets(*imgs, global_offset=False, gauss=True, hh=500, hw=500)
+print(offs)
 snrs = SNR(*imgs)
 fluxes = instrumental_flux(*imgs)
 # IGNORISATI OVAJ BLOK
 #FWHMs = np.array(
 #        [(img.stars[0].FWHM(img), img.stars[1].FWHM(img)) for img in imgs]
 #        )
-#v = imgs[0].stars[0]
+v = imgs[0].stars[0]
 #r = imgs[0].stars[1]
-#xpos = [v.x[img] for img in imgs]
-#ypos = [v.y[img] for img in imgs]
+xpos = [v.x[img] for img in imgs]
+ypos = [v.y[img] for img in imgs]
 #r_xpos = [r.x[img] for img in imgs]
 #r_ypos = [r.y[img] for img in imgs]
 #xc, yc = np.transpose([img.stars[0].centroid(img) for img in imgs])
-#plt.figure()
-#plt.imshow(2.5 * np.log10(imgs[0].imdata), cmap='gray')
-#plt.plot(xpos, ypos, label='V2455 Cyg')
+plt.figure()
+plt.imshow(2.5 * np.log10(imgs[0].imdata), cmap='gray')
+plt.plot(xpos, ypos)
+plt.plot(xpos[0], ypos[0], 'o')
+plt.plot(xpos[37], ypos[37], 'o')
 #plt.plot(r_xpos, r_ypos, label='HD 204569')
-#plt.title('Positions')
-#plt.axis('equal')
-#plt.legend()
+plt.title('Positions')
+plt.axis('equal')
 #plt.figure()
 #plt.plot(ypos, label='Aperture position, LCT')
 #plt.title('Y')
@@ -99,9 +101,9 @@ mags = -2.5 * np.log10(fluxes)  # pretvaramo fluks u magnitudu
 _, magv, dmag = np.loadtxt(
         "../merenja.txt", delimiter=',', unpack=True
         )[:, :N_IMGS - 1]  # merenja iz MaxIm DL, -1 zbog onog snimka koji fali
-print(magv)
+#print(magv)
 magv = np.insert(magv, 12, np.nan)
-print(magv)
+#print(magv)
 dmag = np.insert(dmag, 12, np.nan)
 ideal_lc = mags[:, 1:].mean(axis=1)  # usrednjavamo krive sjaja ref zvezda
 for m in mags.T:

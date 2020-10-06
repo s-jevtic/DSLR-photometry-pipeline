@@ -366,6 +366,12 @@ class Monochrome(DSLRImage):
             w2 = self.imdata[y-hh:y+hh, x-hw:x+hw]
             shift = -register_translation(w1, w2)[0]
             print("Local offset for star", s, ":", shift)
+        print(
+                "(looking around({}, {}))".format(
+                        int(s.get_x() + shift[1]),
+                        int(s.get_y() + shift[0])
+                        )
+            )
         s.updateCoords(
                 self, s.get_x() + shift[1], s.get_y() + shift[0], gauss=gauss
                 )

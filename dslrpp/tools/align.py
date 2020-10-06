@@ -4,6 +4,7 @@ stars (or other celestial objects).
 import numpy as np
 from skimage.feature import register_translation
 from ..prepare import Monochrome
+from matplotlib import pyplot as plt
 
 __all__ = ["get_offsets"]
 
@@ -88,11 +89,19 @@ def __get_shift(img1, img2, hh=20, hw=20):
         w2 = __window(imd2, (s.y[img1], s.x[img1]), hh, hw)
         offset = register_translation(w1, w2)[0]
         offsets.append(offset)
-        print("{}:{}".format(s.x[img1] - hw, s.x[img1] + hw))
-#        fig, (a1, a2) = plt.subplots(ncols=2, figsize=(20, 7))
-#        a1.imshow(w1, cmap='gray')
-#        a2.imshow(w2, cmap='gray')
-#        plt.show()
+        if np.abs(offset[0]*offset[1]) > 100:
+            fig, (a1, a2) = plt.subplots(ncols=2)
+            plt.title(str(offsets[0]))
+            a1.imshow(w1, cmap='gray')
+            plt.title(str(offsets[3]))
+            a2.imshow(w2, cmap='gray')
+            a1.plot()
+            plt.show()
+            input()
+        else:
+            print(str(np.abs(offset[0]*offset[1])), "<", "100")
+            input()
+#        print("{}:{}".format(s.x[img1] - hw, s.x[img1] + hw))
     print(offsets)
     y, x = np.median(offsets, axis=0)
     return -int(y), -int(x)
@@ -162,18 +171,25 @@ def get_offsets(*imgs, hh=20, hw=20, gauss=False, global_offset=False):
     """
     offsets = np.array([[0, 0]])
     for i in range(1, len(imgs)):
-        y, x = __get_shift(imgs[i-1], imgs[i], hh, hw)
+        # y, x = __get_shift(imgs[i-1], imgs[i], hh, hw)
+        y, x = -register_translation(imgs[i-1].imdata, imgs[i].imdata)[0]
         for s in imgs[i-1].stars:
             if global_offset:
-                imgs[i].inherit_star(s, imgs[i-1], [y, x], gauss=gauss)
+                imgs[i].inherit_star(
+                        s, imgs[i-1], shift=[y, x], gauss=gauss,
+                        hh=int(hh//2), hw=int(hw//2)
+                        )
             else:
-                imgs[i].inherit_star(s, imgs[i-1], gauss=gauss)
+                imgs[i].inherit_star(
+                        s, imgs[i-1], gauss=gauss,
+                        hh=int(hh//2), hw=int(hw//2)
+                        )
         imgs[i].make_current()
         offsets = np.concatenate((offsets, [[y, x]]), axis=0)
         print('diff offset:', offsets[i], '/', offsets[i-1])
         offsets[i] += offsets[i-1]
         print('full offset:', offsets[i], '/', offsets[i-1])
-        print("{}/{}".format(i, len(offsets) - 1))
+        print("{}/{}".format(i, len(imgs) - 1))
     return offsets
 
 
