@@ -24,7 +24,7 @@ def periodogram(
         plot=True
         ):
     if precision is None:
-        precision = np.min(mags[1:] - mags[:-1])
+        precision = np.min(times[1:] - times[:-1])
     pRange = np.arange(min_expected, max_expected, precision)
     freq = 1/pRange
     print(times.shape, mags.shape, errors.shape)
