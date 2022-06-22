@@ -1,4 +1,4 @@
 astropy==3.0.3
-numpy==1.14.5
+numpy==1.22.0
 rawpy==0.11.0
 exifread==2.1.2
