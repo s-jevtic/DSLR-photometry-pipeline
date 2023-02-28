@@ -1,4 +1,9 @@
-astropy==3.0.3
-numpy==1.22.0
-rawpy==0.17.3
-exifread==2.1.2
+astropy==5.1
+ExifRead==2.1.2
+matplotlib==3.6.2
+numpy==1.23.4
+photutils==1.6.0
+rawkit==0.6.0
+scikit_image==0.19.3
+scipy==1.10.0
+skimage==0.0
