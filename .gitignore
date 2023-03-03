@@ -95,6 +95,9 @@ ENV/
 # Rope project settings
 .ropeproject
 
+# Neovim stuff
+pyrightconfig.json
+
 # mkdocs documentation
 /site
 
