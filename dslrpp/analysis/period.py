@@ -1,5 +1,6 @@
 """
 """
+from math import isnan
 import numpy as np
 from astropy.timeseries import LombScargle as lsp
 from matplotlib import pyplot as plt
@@ -35,6 +36,7 @@ def periodogram(
         plt.xlabel('Period')
         plt.ylabel('Lomb-Scargle power')
         plt.plot(pRange, ls_power)
+        plt.show()
     return pRange, ls_power
 
 
@@ -49,6 +51,11 @@ def est_period(pRange, power, n_estimates=1, rnd=True):
     errors = np.empty_like(relevant_pPeaks)
     j = 0
     for i in relevant_indices:
+        if np.isnan(power[i]):
+            raise ValueError(
+                "Lomb-Scargle power is not a number! "
+                "Did you provide enough light frames?"
+            )
         print(
                 "Analyzing peak no. {} ({:.2f},{:.2f})".format(
                         j+1, pRange[i], power[i]

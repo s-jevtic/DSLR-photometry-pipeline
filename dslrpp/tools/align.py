@@ -2,109 +2,109 @@
 stars (or other celestial objects).
 """
 import numpy as np
-from skimage.feature import register_translation
+from skimage.registration import phase_cross_correlation
 from ..prepare import Monochrome
-from matplotlib import pyplot as plt
+# from matplotlib import pyplot as plt
 
 __all__ = ["get_offsets"]
 
 
-def __window(imd, center, hh, hw):
-    """Auxiliary function for slicing the array into a window.
+# def __window(imd, center, hh, hw):
+    # """Auxiliary function for slicing the array into a window.
 
-    If the window is too large for the image, it will be downsized.
+    # If the window is too large for the image, it will be downsized.
 
-    Parameters
-    ----------
-    imd : `numpy.ndarray`
-        The image array to be sliced.
-    center : tuple of `int`\0s
-        The center of the window in a (y, x) format
-    hh : `int`
-        The half-height of the window
-    hw : `int`
-        The half-width of the window
+    # Parameters
+    # ----------
+    # imd : `numpy.ndarray`
+        # The image array to be sliced.
+    # center : tuple of `int`\0s
+        # The center of the window in a (y, x) format
+    # hh : `int`
+        # The half-height of the window
+    # hw : `int`
+        # The half-width of the window
 
-    Returns
-    -------
-    window : `numpy.ndarray`
-        The sliced array.
-    """
-    H = len(imd)
-    W = len(imd[0])
+    # Returns
+    # -------
+    # window : `numpy.ndarray`
+        # The sliced array.
+    # """
+    # H = len(imd)
+    # W = len(imd[0])
 
-    if center[0] - hh < 0:
-        y1 = 0
-    else:
-        y1 = int(center[0]) - hh
-    if center[0] + hh > H:
-        y2 = H
-    else:
-        y2 = int(center[0]) + hh
+    # if center[0] - hh < 0:
+        # y1 = 0
+    # else:
+        # y1 = int(center[0]) - hh
+    # if center[0] + hh > H:
+        # y2 = H
+    # else:
+        # y2 = int(center[0]) + hh
 
-    if int(center[1]) - hw < 0:
-        x1 = 0
-    else:
-        x1 = int(center[1]) - hw
+    # if int(center[1]) - hw < 0:
+        # x1 = 0
+    # else:
+        # x1 = int(center[1]) - hw
 
-    if int(center[1]) + hw > W:
-        x2 = W
-    else:
-        x2 = int(center[1]) + hw
-    return imd[y1:y2, x1:x2]
+    # if int(center[1]) + hw > W:
+        # x2 = W
+    # else:
+        # x2 = int(center[1]) + hw
+    # return imd[y1:y2, x1:x2]
 
 
-def __get_shift(img1, img2, hh=20, hw=20):
-    """Auxiliary function; computes the offset between two images.
+# def __get_shift(img1, img2, hh=20, hw=20):
+    # """Auxiliary function; computes the offset between two images.
 
-    Takes the positions of stars, does a FFT-based cross-correlation on the
-    windows around the specified positions and calculates the pixel offset in a
-    (y, x) format.
+    # Takes the positions of stars, does a FFT-based cross-correlation on the
+    # windows around the specified positions and calculates the pixel offset in a
+    # (y, x) format.
 
-    Parameters
-    ----------
-    img1 : `Monochrome`
-        The reference image.
-    img2 : `Monochrome`
-        The image used to compute the offset
-    hh : `int`, optional
-        The half-height of the windows
-    hw : `int`, optional
-        The half-width of the windows
+    # Parameters
+    # ----------
+    # img1 : `Monochrome`
+        # The reference image.
+    # img2 : `Monochrome`
+        # The image used to compute the offset
+    # hh : `int`, optional
+        # The half-height of the windows
+    # hw : `int`, optional
+        # The half-width of the windows
 
-    Returns
-    -------
-    y : `int`
-        The height component of the offset
-    x : `int`
-        The width component of the offset
-    """
-    imd1 = img1.imdata / img1.imdata.mean()
-    imd2 = img2.imdata / img2.imdata.mean()
-    offsets = []
-    for s in img1.stars:
-        if s.isVar:
-            pass
-        w1 = __window(imd1, (s.y[img1], s.x[img1]), hh, hw)
-        w2 = __window(imd2, (s.y[img1], s.x[img1]), hh, hw)
-        offset = register_translation(w1, w2)[0]
-        offsets.append(offset)
-        if np.abs(offset[0]*offset[1]) > 100:
-            fig, (a1, a2) = plt.subplots(ncols=2)
-            plt.title(str(offsets[0]))
-            a1.imshow(w1, cmap='gray')
-            plt.title(str(offsets[3]))
-            a2.imshow(w2, cmap='gray')
-            a1.plot()
-            plt.show()
-            input()
-        else:
-            print(str(np.abs(offset[0]*offset[1])), "<", "100")
-            input()
-#        print("{}:{}".format(s.x[img1] - hw, s.x[img1] + hw))
-    print(offsets)
-    y, x = np.median(offsets, axis=0)
-    return -int(y), -int(x)
+    # Returns
+    # -------
+    # y : `int`
+        # The height component of the offset
+    # x : `int`
+        # The width component of the offset
+    # """
+    # imd1 = img1.imdata / img1.imdata.mean()
+    # imd2 = img2.imdata / img2.imdata.mean()
+    # offsets = []
+    # for s in img1.stars:
+        # if s.isVar:
+            # pass
+        # w1 = __window(imd1, (s.y[img1], s.x[img1]), hh, hw)
+        # w2 = __window(imd2, (s.y[img1], s.x[img1]), hh, hw)
+        # offset = phase_cross_correlation(w1, w2)[0]
+        # offsets.append(offset)
+        # if np.abs(offset[0]*offset[1]) > 100:
+            # fig, (a1, a2) = plt.subplots(ncols=2)
+            # plt.title(str(offsets[0]))
+            # a1.imshow(w1, cmap='gray')
+            # plt.title(str(offsets[3]))
+            # a2.imshow(w2, cmap='gray')
+            # a1.plot()
+            # plt.show()
+            # input()
+        # else:
+            # print(str(np.abs(offset[0]*offset[1])), "<", "100")
+            # input()
+# #        print("{}:{}".format(s.x[img1] - hw, s.x[img1] + hw))
+    # print(offsets)
+    # y, x = np.median(offsets, axis=0)
+    # return -int(y), -int(x)
 
 
 def __translate(imd, dy, dx):
@@ -172,7 +172,7 @@ def get_offsets(*imgs, hh=20, hw=20, gauss=False, global_offset=False):
     offsets = np.array([[0, 0]])
     for i in range(1, len(imgs)):
         # y, x = __get_shift(imgs[i-1], imgs[i], hh, hw)
-        y, x = -register_translation(imgs[i-1].imdata, imgs[i].imdata)[0]
+        y, x = -phase_cross_correlation(imgs[i-1].imdata, imgs[i].imdata)[0]
         for s in imgs[i-1].stars:
             if global_offset:
                 imgs[i].inherit_star(

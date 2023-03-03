@@ -17,6 +17,7 @@ def SNR(*imgs):
     for img in imgs:
         _SNRs = []
         for s in stars:
+            print(s, img)
             ap = s.apertures[img]
             signal = aperture_photometry(img.imdata, ap)['aperture_sum'][0]
             mean_signal = signal/ap.area
@@ -119,7 +120,7 @@ def lightcurve(
     mags += ref_mag
     if return_error:
         errors = np.array([1.0857/np.sqrt(snrs[:, i]) for i in range(n_stars)])
-    times = imgs[:].jdate
+    times = np.array([img.jdate for img in imgs])
     if not jd_time:
         times -= times.min()
     plt.figure()

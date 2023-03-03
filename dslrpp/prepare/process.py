@@ -8,16 +8,17 @@ import os
 from enum import IntEnum
 from fractions import Fraction
 from datetime import datetime
+
 from astropy.time import Time
 from astropy.io import fits
+from astropy.modeling import models, fitting
 from photutils import CircularAperture, CircularAnnulus
-from photutils.centroids import fit_2dgaussian  # , GaussianConst2D
-from skimage.feature import register_translation
+from photutils.centroids import centroid_2dg
+from skimage.registration import phase_cross_correlation
 from skimage.measure import block_reduce
 import exifread
 import numpy as np
-from rawkit.raw import Raw
-import libraw
+import rawpy
 from matplotlib import pyplot as plt
 
 __all__ = ["ImageType", "Color", "DSLRImage", "Monochrome", "Star"]
@@ -59,11 +60,12 @@ def _demosaic(im):
 
 
 def isRaw(f):
+    print("Checking if file is in RAW format:", f)
     try:
-        Raw(f)
+        rawpy.imread(f)
         return True
     except Exception as e:
-        if type(e) is libraw.errors.FileUnsupported:
+        if type(e) is rawpy.NotSupportedError:
             print("File unsupported:", f)
         else:
             print("Error:", e)
@@ -75,6 +77,7 @@ class DSLRImage:
     """Loads an image from RAW format, stores the metadata and writes the image
     as a NumPy array.
     """
+
     fnum = np.zeros((4, 4), dtype=int)
     # Declares a NumPy 2d array for filename serialization
 
@@ -95,8 +98,12 @@ class DSLRImage:
         """Bins the data from the image. Requires the window width.
         If window height is not specified, the window is assumed to be square.
         """
+        if x is None:
+            x = 1
         if y is None:
             y = x
+        if (x == 1) and (y == 1):
+            return
         print(
                 "Binning image: " + str(self) + " (" + str(x) + "x" + str(y)
                 + ")")
@@ -184,8 +191,12 @@ class DSLRImage:
     def __parseData(self, impath):
         # reads the metadata from the RAW file
         print("Reading file: " + impath)
-        with Raw(impath) as img:
-            idata = _demosaic(img.raw_image())
+        with rawpy.imread(impath) as img:
+            iarray = img.raw_image.copy()
+            if len(iarray.shape) == 2:
+                idata = _demosaic(iarray)
+            else:
+                idata = iarray
         with open(impath, 'rb') as f:
             tags = exifread.process_file(f)
             exptime = float(
@@ -282,8 +293,12 @@ class Monochrome(DSLRImage):
         """Same as the binImage method in the superclass, but optimized for
         monochrome arrays.
         """
+        if x is None:
+            x = 1
         if y is None:
             y = x
+        if (x == 1) and (y == 1):
+            return
         print(
                 "Binning monochrome image: " + str(self)
                 + " (" + str(x) + "x" + str(y) + ")"
@@ -364,7 +379,8 @@ class Monochrome(DSLRImage):
             y = int(s.get_y())
             w1 = parent.imdata[y-hh:y+hh, x-hw:x+hw]
             w2 = self.imdata[y-hh:y+hh, x-hw:x+hw]
-            shift = -register_translation(w1, w2)[0]
+            # shift = -register_translation(w1, w2)[0]
+            shift = -phase_cross_correlation(w1, w2)[0]
             print("Local offset for star", s, ":", shift)
         print(
                 "(looking around({}, {}))".format(
@@ -414,15 +430,17 @@ class Star:
         self.annuli = dict()
         self.x = dict()
         self.y = dict()
+        window = parent.imdata[y-w:y+w, x-w:x+w]
+        centroid = centroid_2dg(window)
+        x += centroid[0] - w
+        y += centroid[1] - w
         if r is None:
-            gaussian = fit_2dgaussian(parent.imdata[y-w:y+w, x-w:x+w])
-            x += gaussian.x_mean.value - w
-            y += gaussian.y_mean.value - w
-            r = 2 * np.sqrt(
-                            gaussian.x_stddev + gaussian.y_stddev
-                            )*(
-                            np.sqrt(2*np.log(2))
-                            )
+            g2d_model = models.Gaussian2D()
+            fitter = fitting.TRFLSQFitter()
+            mgx, mgy = np.mgrid[:2*w, :2*w]
+            gaussian = fitter(g2d_model, mgx, mgy, z=window)
+            r = 2 * np.sqrt(gaussian.x_stddev + gaussian.y_stddev) \
+                * np.sqrt(2*np.log(2))
         if d_d is None:
             d_d = r
         if d_a is None:
@@ -452,9 +470,9 @@ class Star:
 #                plt.imshow(frame.imdata[y-2*w:y+2*w, x-2*w:x+2*w], cmap='gray')
 #                plt.title('Gaussian fitting space')
 #                plt.show()
-                gaussian = fit_2dgaussian(frame.imdata[y-w:y+w, x-w:x+w])
-                x += gaussian.x_mean.value - w
-                y += gaussian.y_mean.value - w
+                centroid = centroid_2dg(frame.imdata[y-w:y+w, x-w:x+w])
+                x += centroid[0] - w
+                y += centroid[1] - w
             except ValueError:
                 print(
                         '({}, {}: [{}:{}, {}:{}]'.format(
@@ -478,23 +496,26 @@ class Star:
         self.apertures[frame].plot(ax, fc='g', ec='g')
         self.annuli[frame].plot(ax, fc='r', ec='r')
 
-    def FWHM(self, frame):
-        x = int(self.x[frame])
-        y = int(self.y[frame])
-        gaussian = fit_2dgaussian(frame.imdata[y-w:y+w, x-w:x+w])
-        r = 2 * np.sqrt(gaussian.x_stddev + gaussian.y_stddev
-                        )*(
-                                np.sqrt(2*np.log(2))
-                        )
-        return r
+    # def FWHM(self, frame):
+        # x = int(self.x[frame])
+        # y = int(self.y[frame])
+        # gaussian = fit_2dgaussian(frame.imdata[y-w:y+w, x-w:x+w])
+        # r = 2 * np.sqrt(gaussian.x_stddev + gaussian.y_stddev
+                        # )*(
+                                # np.sqrt(2*np.log(2))
+                        # )
+        # return r
 
     def centroid(self, frame):
-        x = int(self.x[frame])
-        y = int(self.y[frame])
-        gaussian = fit_2dgaussian(frame.imdata[y-w:y+w, x-w:x+w])
-        x += gaussian.x_mean.value - w
-        y += gaussian.y_mean.value - w
-        return x, y
+        x = self.x
+        y = self.y
+        return tuple(centroid_2dg(frame.imdata[y-w:y+w, x-w:x+w]))
+        # x = int(self.x[frame])
+        # y = int(self.y[frame])
+        # gaussian = fit_2dgaussian(frame.imdata[y-w:y+w, x-w:x+w])
+        # x += gaussian.x_mean.value - w
+        # y += gaussian.y_mean.value - w
+        # return x, y
 
     def __str__(self):
         if self.isVar:
@@ -512,11 +533,16 @@ class Star:
                     )
         except KeyError:
             s += "Centroid unknown\n"
-        s += "Aperture radius: " + str(np.around(self.r, decimals=2)) + "\n"
-        s += "Annulus radii: {}~{}\n".format(
-                np.around(self.r+self.d_d, decimals=2),
-                np.around(self.r+self.d_d+self.d_a, decimals=2)
-                )
+        s += "Apertures present on images:\n"
+        for img in self.apertures.keys():
+            s += '\t'
+            s += str(img)
+            s += '\n'
+        # s += "Aperture radius: " + str(np.around(self.r, decimals=2)) + "\n"
+        # s += "Annulus radii: {}~{}\n".format(
+                # np.around(self.r+self.d_d, decimals=2),
+                # np.around(self.r+self.d_d+self.d_a, decimals=2)
+                # )
         return s
 
 

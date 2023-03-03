@@ -49,29 +49,32 @@ def sort(path, red=False, green=True, blue=False, binX=None, binY=None):
     imagesG = np.empty(())
     imagesB = np.empty(())
 
-    if(red):
+    if red:
         clights = np.array([im.extractChannel(Color.RED) for im in lights])
         cbias = np.array([im.extractChannel(Color.RED) for im in bias])
         cflats = np.array([im.extractChannel(Color.RED) for im in flats])
         cdarks = np.array([im.extractChannel(Color.RED) for im in darks])
         calibrate(clights, cbias, cdarks, cflats)
+        for im in clights:
+            im.binImage(binX, binY)
         imagesR = clights
-    if(green):
+    if green:
         clights = np.array([im.extractChannel(Color.GREEN) for im in lights])
         cbias = np.array([im.extractChannel(Color.GREEN) for im in bias])
         cflats = np.array([im.extractChannel(Color.GREEN) for im in flats])
         cdarks = np.array([im.extractChannel(Color.GREEN) for im in darks])
         calibrate(clights, cbias, cdarks, cflats)
+        for im in clights:
+            im.binImage(binX, binY)
         imagesG = clights
-    if(blue):
+    if blue:
         clights = np.array([im.extractChannel(Color.BLUE) for im in lights])
         cbias = np.array([im.extractChannel(Color.BLUE) for im in bias])
         cflats = np.array([im.extractChannel(Color.BLUE) for im in flats])
         cdarks = np.array([im.extractChannel(Color.BLUE) for im in darks])
         calibrate(clights, cbias, cdarks, cflats)
+        for im in clights:
+            im.binImage(binX, binY)
         imagesB = clights
-
-    for im in np.concatenate((imagesR, imagesG, imagesB)):
-        im.binImage(binX, binY)
 
     return (imagesR, imagesG, imagesB)
